@@ -63,14 +63,10 @@ impl SessionFilters {
         sessions.retain(|s| {
             if let Some(ref status) = self.status {
                 let status_lower = status.to_lowercase();
-                let matches = s
-                    .status
+                if s.operational_status
                     .as_ref()
-                    .is_some_and(|v| v.to_lowercase() == status_lower)
-                    || s.operational_status
-                        .as_ref()
-                        .is_some_and(|v| v.to_lowercase() == status_lower);
-                if !matches {
+                    .is_none_or(|v| v.to_lowercase() != status_lower)
+                {
                     return false;
                 }
             }
@@ -254,7 +250,7 @@ mod tests {
     fn make_session(overrides: impl FnOnce(&mut Session)) -> Session {
         let mut s = Session {
             kasm_id: "test-id".into(),
-            status: Some("running".into()),
+            operational_status: Some("running".into()),
             image_id: Some("img-1".into()),
             user_id: Some("user-1".into()),
             hostname: Some("host-1".into()),
@@ -273,16 +269,16 @@ mod tests {
             ..Default::default()
         };
         let mut sessions = vec![
-            make_session(|s| s.status = Some("running".into())),
-            make_session(|s| s.status = Some("stopped".into())),
-            make_session(|s| s.status = Some("RUNNING".into())),
+            make_session(|s| s.operational_status = Some("running".into())),
+            make_session(|s| s.operational_status = Some("stopped".into())),
+            make_session(|s| s.operational_status = Some("RUNNING".into())),
         ];
         filters.apply(&mut sessions);
         assert_eq!(sessions.len(), 2);
         assert!(
             sessions
                 .iter()
-                .all(|s| s.status.as_ref().unwrap().to_lowercase() == "running")
+                .all(|s| s.operational_status.as_ref().unwrap().to_lowercase() == "running")
         );
     }
 
@@ -394,21 +390,21 @@ mod tests {
         };
         let mut sessions = vec![
             make_session(|s| {
-                s.status = Some("running".into());
+                s.operational_status = Some("running".into());
                 s.image_id = Some("img-1".into());
             }),
             make_session(|s| {
-                s.status = Some("running".into());
+                s.operational_status = Some("running".into());
                 s.image_id = Some("img-2".into());
             }),
             make_session(|s| {
-                s.status = Some("stopped".into());
+                s.operational_status = Some("stopped".into());
                 s.image_id = Some("img-1".into());
             }),
         ];
         filters.apply(&mut sessions);
         assert_eq!(sessions.len(), 1);
-        assert_eq!(sessions[0].status.as_deref(), Some("running"));
+        assert_eq!(sessions[0].operational_status.as_deref(), Some("running"));
         assert_eq!(sessions[0].image_id.as_deref(), Some("img-1"));
     }
 
