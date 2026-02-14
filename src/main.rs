@@ -160,7 +160,14 @@ async fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> 
 
             let total = sessions.len();
             let mut failed = 0usize;
+            let mut skipped = 0usize;
             for s in &sessions {
+                let status = s.status.as_deref().unwrap_or("");
+                if status.eq_ignore_ascii_case("stopped") {
+                    eprintln!("  {} skipped (status: {status})", s.kasm_id);
+                    skipped += 1;
+                    continue;
+                }
                 match client.stop_kasm(&s.kasm_id).await {
                     Ok(()) => eprintln!("  {} ok", s.kasm_id),
                     Err(e) => {
@@ -170,7 +177,17 @@ async fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> 
                 }
             }
 
-            eprintln!("Stopped {}/{} sessions.", total - failed, total);
+            let attempted = total - skipped;
+            eprintln!(
+                "Stopped {}/{} sessions.{}",
+                attempted - failed,
+                attempted,
+                if skipped > 0 {
+                    format!(" ({skipped} skipped)")
+                } else {
+                    String::new()
+                }
+            );
             if failed > 0 {
                 anyhow::bail!("{failed} session(s) failed to stop");
             }
@@ -212,7 +229,14 @@ async fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()
 
             let total = sessions.len();
             let mut failed = 0usize;
+            let mut skipped = 0usize;
             for s in &sessions {
+                let status = s.status.as_deref().unwrap_or("");
+                if status.eq_ignore_ascii_case("stopped") || status.eq_ignore_ascii_case("paused") {
+                    eprintln!("  {} skipped (status: {status})", s.kasm_id);
+                    skipped += 1;
+                    continue;
+                }
                 match client.pause_kasm(&s.kasm_id).await {
                     Ok(()) => eprintln!("  {} ok", s.kasm_id),
                     Err(e) => {
@@ -222,7 +246,17 @@ async fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()
                 }
             }
 
-            eprintln!("Paused {}/{} sessions.", total - failed, total);
+            let attempted = total - skipped;
+            eprintln!(
+                "Paused {}/{} sessions.{}",
+                attempted - failed,
+                attempted,
+                if skipped > 0 {
+                    format!(" ({skipped} skipped)")
+                } else {
+                    String::new()
+                }
+            );
             if failed > 0 {
                 anyhow::bail!("{failed} session(s) failed to pause");
             }
@@ -264,7 +298,14 @@ async fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<
 
             let total = sessions.len();
             let mut failed = 0usize;
+            let mut skipped = 0usize;
             for s in &sessions {
+                let status = s.status.as_deref().unwrap_or("");
+                if status.eq_ignore_ascii_case("running") {
+                    eprintln!("  {} skipped (status: {status})", s.kasm_id);
+                    skipped += 1;
+                    continue;
+                }
                 match client.resume_kasm(&s.kasm_id).await {
                     Ok(()) => eprintln!("  {} ok", s.kasm_id),
                     Err(e) => {
@@ -274,7 +315,17 @@ async fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<
                 }
             }
 
-            eprintln!("Resumed {}/{} sessions.", total - failed, total);
+            let attempted = total - skipped;
+            eprintln!(
+                "Resumed {}/{} sessions.{}",
+                attempted - failed,
+                attempted,
+                if skipped > 0 {
+                    format!(" ({skipped} skipped)")
+                } else {
+                    String::new()
+                }
+            );
             if failed > 0 {
                 anyhow::bail!("{failed} session(s) failed to resume");
             }
