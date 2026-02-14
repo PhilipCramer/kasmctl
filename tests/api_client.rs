@@ -42,8 +42,8 @@ async fn get_kasms_success() {
         .with_status(200)
         .with_body(
             r#"{"kasms":[
-                {"kasm_id":"abc-123","status":"running"},
-                {"kasm_id":"def-456","status":"stopped"}
+                {"kasm_id":"abc-123","operational_status":"running"},
+                {"kasm_id":"def-456","operational_status":"stopped"}
             ]}"#,
         )
         .create_async()
@@ -90,7 +90,7 @@ async fn get_kasm_status_success() {
             r#"{"kasm_id":"abc-123"}"#.into(),
         ))
         .with_status(200)
-        .with_body(r#"{"kasm":{"kasm_id":"abc-123","status":"running"}}"#)
+        .with_body(r#"{"kasm":{"kasm_id":"abc-123","operational_status":"running"}}"#)
         .create_async()
         .await;
 
@@ -99,7 +99,7 @@ async fn get_kasm_status_success() {
     let session = client.get_kasm_status("abc-123").await.unwrap();
 
     assert_eq!(session.kasm_id, "abc-123");
-    assert_eq!(session.status.as_deref(), Some("running"));
+    assert_eq!(session.operational_status.as_deref(), Some("running"));
 
     mock.assert_async().await;
 }

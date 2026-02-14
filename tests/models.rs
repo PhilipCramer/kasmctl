@@ -68,7 +68,6 @@ fn arb_session() -> impl Strategy<Value = Session> {
             arb_option_string(),
             arb_option_string(),
             arb_option_string(),
-            arb_option_string(),
         ),
         (
             arb_option_string(),
@@ -84,7 +83,6 @@ fn arb_session() -> impl Strategy<Value = Session> {
                 (
                     kasm_id,
                     user_id,
-                    status,
                     image_id,
                     username,
                     share_id,
@@ -97,7 +95,6 @@ fn arb_session() -> impl Strategy<Value = Session> {
                 Session {
                     kasm_id,
                     user_id,
-                    status,
                     image_id,
                     username,
                     share_id,
@@ -171,7 +168,7 @@ proptest! {
     #[test]
     fn table_row_none_fields_become_empty_string(session in arb_session()) {
         let row = session.table_row();
-        if session.status.is_none() && session.operational_status.is_none() {
+        if session.operational_status.is_none() {
             prop_assert_eq!(&row[1], "");
         }
         if session.image_id.is_none() {
@@ -199,7 +196,7 @@ proptest! {
     fn table_detail_none_fields_become_empty_string(session in arb_session()) {
         let detail = session.table_detail();
         let lookup = |label: &str| detail.iter().find(|(k, _)| *k == label).map(|(_, v)| v.clone());
-        if session.status.is_none() && session.operational_status.is_none() {
+        if session.operational_status.is_none() {
             let val = lookup("STATUS");
             prop_assert_eq!(val.as_deref(), Some(""));
         }
@@ -236,7 +233,7 @@ proptest! {
             prop_assert_eq!(val.as_deref(), Some(""));
         }
         if session.operational_status.is_none() {
-            let val = lookup("OPERATIONAL STATUS");
+            let val = lookup("STATUS");
             prop_assert_eq!(val.as_deref(), Some(""));
         }
         if session.container_id.is_none() {
@@ -347,7 +344,6 @@ fn table_detail_has_all_labels() {
     let expected_labels = vec![
         "KASM ID",
         "STATUS",
-        "OPERATIONAL STATUS",
         "IMAGE ID",
         "USERNAME",
         "USER ID",
@@ -364,7 +360,6 @@ fn table_detail_has_all_labels() {
     let session = Session {
         kasm_id: "test-id".into(),
         user_id: None,
-        status: None,
         image_id: None,
         username: None,
         share_id: None,
@@ -388,7 +383,6 @@ fn table_detail_contains_field_values() {
     let session = Session {
         kasm_id: "abc-123".into(),
         user_id: Some("user-456".into()),
-        status: Some("running".into()),
         image_id: Some("img-789".into()),
         username: Some("alice".into()),
         share_id: Some("share-001".into()),
@@ -412,7 +406,6 @@ fn table_detail_contains_field_values() {
     };
     assert_eq!(lookup("KASM ID"), "abc-123");
     assert_eq!(lookup("STATUS"), "running");
-    assert_eq!(lookup("OPERATIONAL STATUS"), "running");
     assert_eq!(lookup("IMAGE ID"), "img-789");
     assert_eq!(lookup("USERNAME"), "alice");
     assert_eq!(lookup("USER ID"), "user-456");
@@ -429,7 +422,7 @@ fn table_detail_contains_field_values() {
 
 #[test]
 fn deserialize_missing_required_kasm_id_fails() {
-    let json = r#"{"status": "running"}"#;
+    let json = r#"{"operational_status": "running"}"#;
     let result = serde_json::from_str::<Session>(json);
     assert!(result.is_err());
 }

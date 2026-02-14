@@ -61,7 +61,6 @@ fn arb_session() -> impl Strategy<Value = Session> {
             arb_option_string(),
             arb_option_string(),
             arb_option_string(),
-            arb_option_string(),
         ),
         (
             arb_option_string(),
@@ -77,7 +76,6 @@ fn arb_session() -> impl Strategy<Value = Session> {
                 (
                     kasm_id,
                     user_id,
-                    status,
                     image_id,
                     username,
                     share_id,
@@ -90,7 +88,6 @@ fn arb_session() -> impl Strategy<Value = Session> {
                 Session {
                     kasm_id,
                     user_id,
-                    status,
                     image_id,
                     username,
                     share_id,
@@ -151,7 +148,7 @@ proptest! {
     fn table_detail_contains_all_labels(session in arb_session()) {
         let output = output::render_one(&session, &OutputFormat::Table).unwrap();
         for label in &[
-            "KASM ID", "STATUS", "OPERATIONAL STATUS", "IMAGE ID", "USERNAME", "USER ID",
+            "KASM ID", "STATUS", "IMAGE ID", "USERNAME", "USER ID",
             "HOSTNAME", "SERVER ID", "CONTAINER ID",
             "SHARE ID", "KASM URL", "STARTED", "KEEPALIVE", "CREATED", "EXPIRES",
         ] {
@@ -193,7 +190,6 @@ fn table_detail_contains_field_values() {
     let session = Session {
         kasm_id: "abc-123".into(),
         user_id: Some("user-456".into()),
-        status: Some("running".into()),
         image_id: Some("img-789".into()),
         username: Some("alice".into()),
         share_id: Some("share-001".into()),
@@ -204,7 +200,7 @@ fn table_detail_contains_field_values() {
         server_id: None,
         keepalive_date: None,
         start_date: None,
-        operational_status: None,
+        operational_status: Some("running".into()),
         container_id: None,
     };
     let output = output::render_one(&session, &OutputFormat::Table).unwrap();
@@ -224,7 +220,6 @@ fn table_detail_handles_none_fields() {
     let session = Session {
         kasm_id: "test-id".into(),
         user_id: None,
-        status: None,
         image_id: None,
         username: None,
         share_id: None,
@@ -252,7 +247,6 @@ fn table_list_still_uses_compact_headers() {
     let session = Session {
         kasm_id: "abc-123".into(),
         user_id: Some("user-456".into()),
-        status: Some("running".into()),
         image_id: Some("img-789".into()),
         username: Some("alice".into()),
         share_id: Some("share-001".into()),
@@ -263,7 +257,7 @@ fn table_list_still_uses_compact_headers() {
         server_id: None,
         keepalive_date: None,
         start_date: None,
-        operational_status: None,
+        operational_status: Some("running".into()),
         container_id: None,
     };
     let output = output::render_list(&[session], &OutputFormat::Table).unwrap();
@@ -283,7 +277,6 @@ fn json_render_one_is_pretty_printed() {
     let session = Session {
         kasm_id: "test-id".into(),
         user_id: None,
-        status: Some("running".into()),
         image_id: None,
         username: None,
         share_id: None,
@@ -294,7 +287,7 @@ fn json_render_one_is_pretty_printed() {
         server_id: None,
         keepalive_date: None,
         start_date: None,
-        operational_status: None,
+        operational_status: Some("running".into()),
         container_id: None,
     };
     let output = output::render_one(&session, &OutputFormat::Json).unwrap();

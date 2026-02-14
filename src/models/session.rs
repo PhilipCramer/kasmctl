@@ -8,8 +8,6 @@ pub struct Session {
     #[serde(default)]
     pub user_id: Option<String>,
     #[serde(default)]
-    pub status: Option<String>,
-    #[serde(default)]
     pub image_id: Option<String>,
     #[serde(default)]
     pub username: Option<String>,
@@ -45,14 +43,9 @@ impl Resource for Session {
     }
 
     fn table_row(&self) -> Vec<String> {
-        let status = self
-            .status
-            .clone()
-            .or_else(|| self.operational_status.clone())
-            .unwrap_or_default();
         vec![
             self.kasm_id.clone(),
-            status,
+            self.operational_status.clone().unwrap_or_default(),
             self.image_id.clone().unwrap_or_default(),
             self.username.clone().unwrap_or_default(),
             self.created_date.clone().unwrap_or_default(),
@@ -60,16 +53,10 @@ impl Resource for Session {
     }
 
     fn table_detail(&self) -> Vec<(&'static str, String)> {
-        let status = self
-            .status
-            .clone()
-            .or_else(|| self.operational_status.clone())
-            .unwrap_or_default();
         vec![
             ("KASM ID", self.kasm_id.clone()),
-            ("STATUS", status),
             (
-                "OPERATIONAL STATUS",
+                "STATUS",
                 self.operational_status.clone().unwrap_or_default(),
             ),
             ("IMAGE ID", self.image_id.clone().unwrap_or_default()),
