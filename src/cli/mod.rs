@@ -30,6 +30,10 @@ pub struct Cli {
     /// Override server URL (requires KASMCTL_API_KEY and KASMCTL_API_SECRET env vars)
     #[arg(long, global = true)]
     pub server: Option<String>,
+
+    /// Skip TLS certificate verification (for self-signed certificates)
+    #[arg(long, global = true, default_value_t = false)]
+    pub insecure: bool,
 }
 
 #[derive(clap::Subcommand)]

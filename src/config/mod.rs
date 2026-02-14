@@ -46,20 +46,28 @@ pub fn save_config(config: &KasmConfig) -> Result<()> {
 
 /// Resolve the active context from CLI flags and config file.
 /// Priority: --server flag > --context flag > current-context in config > error.
+/// The `insecure` flag is applied on top of the resolved context when set.
 pub fn resolve_context(
     server_override: Option<&str>,
     context_override: Option<&str>,
+    insecure: bool,
 ) -> Result<model::Context> {
-    if let Some(server) = server_override {
+    let mut ctx = if let Some(server) = server_override {
         let api_key = std::env::var("KASMCTL_API_KEY")
             .context("--server requires KASMCTL_API_KEY environment variable")?;
         let api_secret = std::env::var("KASMCTL_API_SECRET")
             .context("--server requires KASMCTL_API_SECRET environment variable")?;
-        return resolve_server_override(server, api_key, api_secret);
+        resolve_server_override(server, api_key, api_secret)?
+    } else {
+        let config = load_config()?;
+        resolve_from_config(&config, context_override)?
+    };
+
+    if insecure {
+        ctx.insecure_skip_tls_verify = true;
     }
 
-    let config = load_config()?;
-    resolve_from_config(&config, context_override)
+    Ok(ctx)
 }
 
 /// Build a context from an explicit server URL and credentials.
