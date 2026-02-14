@@ -171,7 +171,7 @@ proptest! {
     #[test]
     fn table_row_none_fields_become_empty_string(session in arb_session()) {
         let row = session.table_row();
-        if session.status.is_none() {
+        if session.status.is_none() && session.operational_status.is_none() {
             prop_assert_eq!(&row[1], "");
         }
         if session.image_id.is_none() {
@@ -199,7 +199,7 @@ proptest! {
     fn table_detail_none_fields_become_empty_string(session in arb_session()) {
         let detail = session.table_detail();
         let lookup = |label: &str| detail.iter().find(|(k, _)| *k == label).map(|(_, v)| v.clone());
-        if session.status.is_none() {
+        if session.status.is_none() && session.operational_status.is_none() {
             let val = lookup("STATUS");
             prop_assert_eq!(val.as_deref(), Some(""));
         }

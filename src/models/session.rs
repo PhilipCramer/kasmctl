@@ -45,9 +45,14 @@ impl Resource for Session {
     }
 
     fn table_row(&self) -> Vec<String> {
+        let status = self
+            .status
+            .clone()
+            .or_else(|| self.operational_status.clone())
+            .unwrap_or_default();
         vec![
             self.kasm_id.clone(),
-            self.status.clone().unwrap_or_default(),
+            status,
             self.image_id.clone().unwrap_or_default(),
             self.username.clone().unwrap_or_default(),
             self.created_date.clone().unwrap_or_default(),
@@ -55,9 +60,14 @@ impl Resource for Session {
     }
 
     fn table_detail(&self) -> Vec<(&'static str, String)> {
+        let status = self
+            .status
+            .clone()
+            .or_else(|| self.operational_status.clone())
+            .unwrap_or_default();
         vec![
             ("KASM ID", self.kasm_id.clone()),
-            ("STATUS", self.status.clone().unwrap_or_default()),
+            ("STATUS", status),
             (
                 "OPERATIONAL STATUS",
                 self.operational_status.clone().unwrap_or_default(),
