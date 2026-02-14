@@ -162,9 +162,9 @@ async fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> 
             let mut failed = 0usize;
             let mut skipped = 0usize;
             for s in &sessions {
-                let status = s.status.as_deref().unwrap_or("");
-                if status.eq_ignore_ascii_case("stopped") {
-                    eprintln!("  {} skipped (status: {status})", s.kasm_id);
+                let op_status = s.operational_status.as_deref().unwrap_or("");
+                if op_status.eq_ignore_ascii_case("stopped") {
+                    eprintln!("  {} skipped ({op_status})", s.kasm_id);
                     skipped += 1;
                     continue;
                 }
@@ -231,9 +231,11 @@ async fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()
             let mut failed = 0usize;
             let mut skipped = 0usize;
             for s in &sessions {
-                let status = s.status.as_deref().unwrap_or("");
-                if status.eq_ignore_ascii_case("stopped") || status.eq_ignore_ascii_case("paused") {
-                    eprintln!("  {} skipped (status: {status})", s.kasm_id);
+                let op_status = s.operational_status.as_deref().unwrap_or("");
+                if op_status.eq_ignore_ascii_case("stopped")
+                    || op_status.eq_ignore_ascii_case("paused")
+                {
+                    eprintln!("  {} skipped ({op_status})", s.kasm_id);
                     skipped += 1;
                     continue;
                 }
@@ -300,9 +302,9 @@ async fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<
             let mut failed = 0usize;
             let mut skipped = 0usize;
             for s in &sessions {
-                let status = s.status.as_deref().unwrap_or("");
-                if status.eq_ignore_ascii_case("running") {
-                    eprintln!("  {} skipped (status: {status})", s.kasm_id);
+                let op_status = s.operational_status.as_deref().unwrap_or("");
+                if op_status.eq_ignore_ascii_case("running") {
+                    eprintln!("  {} skipped ({op_status})", s.kasm_id);
                     skipped += 1;
                     continue;
                 }
