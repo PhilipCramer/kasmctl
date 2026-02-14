@@ -17,10 +17,10 @@ fn parse_get_sessions() {
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Sessions { status } = args.resource else {
+    let GetResource::Sessions { filters } = args.resource else {
         panic!("expected Sessions resource");
     };
-    assert!(status.is_none());
+    assert!(filters.is_empty());
 }
 
 #[test]
@@ -37,10 +37,10 @@ fn parse_get_sessions_with_status_filter() {
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Sessions { status } = args.resource else {
+    let GetResource::Sessions { filters } = args.resource else {
         panic!("expected Sessions resource");
     };
-    assert_eq!(status.as_deref(), Some("running"));
+    assert_eq!(filters.status.as_deref(), Some("running"));
 }
 
 #[test]
@@ -49,10 +49,10 @@ fn parse_get_sessions_without_status_defaults_to_none() {
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Sessions { status, .. } = args.resource else {
+    let GetResource::Sessions { filters } = args.resource else {
         panic!("expected Sessions resource");
     };
-    assert!(status.is_none());
+    assert!(filters.status.is_none());
 }
 
 #[test]
@@ -61,10 +61,10 @@ fn parse_get_sessions_status_value_is_captured() {
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Sessions { status, .. } = args.resource else {
+    let GetResource::Sessions { filters } = args.resource else {
         panic!("expected Sessions resource");
     };
-    assert_eq!(status.unwrap(), "stopped");
+    assert_eq!(filters.status.unwrap(), "stopped");
 }
 
 #[test]
@@ -212,7 +212,9 @@ fn parse_stop_session() {
     let Command::Stop(args) = cli.command else {
         panic!("expected Stop command");
     };
-    let StopResource::Session { id } = args.resource;
+    let StopResource::Session { id } = args.resource else {
+        panic!("expected Session resource");
+    };
     assert_eq!(id, "kasm-789");
 }
 
@@ -236,7 +238,9 @@ fn parse_pause_session() {
     let Command::Pause(args) = cli.command else {
         panic!("expected Pause command");
     };
-    let PauseResource::Session { id } = args.resource;
+    let PauseResource::Session { id } = args.resource else {
+        panic!("expected Session resource");
+    };
     assert_eq!(id, "kasm-789");
 }
 
@@ -260,7 +264,9 @@ fn parse_resume_session() {
     let Command::Resume(args) = cli.command else {
         panic!("expected Resume command");
     };
-    let ResumeResource::Session { id } = args.resource;
+    let ResumeResource::Session { id } = args.resource else {
+        panic!("expected Session resource");
+    };
     assert_eq!(id, "kasm-789");
 }
 
@@ -408,4 +414,372 @@ fn parse_server_flag() {
 fn parse_no_subcommand_fails() {
     let result = Cli::try_parse_from(["kasmctl"]);
     assert!(result.is_err());
+}
+
+// --- Get sessions filter tests ---
+
+#[test]
+fn parse_get_sessions_with_all_filters() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "get",
+        "sessions",
+        "--status",
+        "running",
+        "--image",
+        "img-1",
+        "--user",
+        "user-1",
+        "--host",
+        "host-1",
+        "--created-before",
+        "2025-01-01 00:00:00",
+        "--created-after",
+        "2024-01-01 00:00:00",
+        "--idle-since",
+        "2025-06-01 00:00:00",
+        "--idle-for",
+        "2h",
+    ])
+    .unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Sessions { filters } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert_eq!(filters.status.as_deref(), Some("running"));
+    assert_eq!(filters.image.as_deref(), Some("img-1"));
+    assert_eq!(filters.user.as_deref(), Some("user-1"));
+    assert_eq!(filters.host.as_deref(), Some("host-1"));
+    assert_eq!(
+        filters.created_before.as_deref(),
+        Some("2025-01-01 00:00:00")
+    );
+    assert_eq!(
+        filters.created_after.as_deref(),
+        Some("2024-01-01 00:00:00")
+    );
+    assert_eq!(filters.idle_since.as_deref(), Some("2025-06-01 00:00:00"));
+    assert_eq!(filters.idle_for.as_deref(), Some("2h"));
+    assert!(!filters.is_empty());
+}
+
+// --- Stop sessions tests ---
+
+#[test]
+fn parse_stop_sessions_no_filters() {
+    let cli = Cli::try_parse_from(["kasmctl", "stop", "sessions"]).unwrap();
+    let Command::Stop(args) = cli.command else {
+        panic!("expected Stop command");
+    };
+    let StopResource::Sessions { filters, yes } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert!(filters.is_empty());
+    assert!(!yes);
+}
+
+#[test]
+fn parse_stop_sessions_with_status() {
+    let cli = Cli::try_parse_from(["kasmctl", "stop", "sessions", "--status", "running"]).unwrap();
+    let Command::Stop(args) = cli.command else {
+        panic!("expected Stop command");
+    };
+    let StopResource::Sessions { filters, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert_eq!(filters.status.as_deref(), Some("running"));
+}
+
+#[test]
+fn parse_stop_sessions_all_filters() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "stop",
+        "sessions",
+        "--status",
+        "running",
+        "--image",
+        "img-1",
+        "--user",
+        "user-1",
+        "--host",
+        "host-1",
+        "--created-before",
+        "2025-01-01 00:00:00",
+        "--created-after",
+        "2024-01-01 00:00:00",
+        "--idle-since",
+        "2025-06-01 00:00:00",
+        "--idle-for",
+        "1h30m",
+    ])
+    .unwrap();
+    let Command::Stop(args) = cli.command else {
+        panic!("expected Stop command");
+    };
+    let StopResource::Sessions { filters, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert_eq!(filters.status.as_deref(), Some("running"));
+    assert_eq!(filters.image.as_deref(), Some("img-1"));
+    assert_eq!(filters.user.as_deref(), Some("user-1"));
+    assert_eq!(filters.host.as_deref(), Some("host-1"));
+    assert_eq!(
+        filters.created_before.as_deref(),
+        Some("2025-01-01 00:00:00")
+    );
+    assert_eq!(
+        filters.created_after.as_deref(),
+        Some("2024-01-01 00:00:00")
+    );
+    assert_eq!(filters.idle_since.as_deref(), Some("2025-06-01 00:00:00"));
+    assert_eq!(filters.idle_for.as_deref(), Some("1h30m"));
+}
+
+#[test]
+fn parse_stop_sessions_yes_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "stop", "sessions", "--yes"]).unwrap();
+    let Command::Stop(args) = cli.command else {
+        panic!("expected Stop command");
+    };
+    let StopResource::Sessions { yes, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert!(yes);
+}
+
+#[test]
+fn parse_stop_sessions_yes_short_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "stop", "sessions", "-y"]).unwrap();
+    let Command::Stop(args) = cli.command else {
+        panic!("expected Stop command");
+    };
+    let StopResource::Sessions { yes, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert!(yes);
+}
+
+#[test]
+fn parse_stop_kasms_alias() {
+    let cli = Cli::try_parse_from(["kasmctl", "stop", "kasms"]).unwrap();
+    let Command::Stop(args) = cli.command else {
+        panic!("expected Stop command");
+    };
+    assert!(matches!(args.resource, StopResource::Sessions { .. }));
+}
+
+// --- Pause sessions tests ---
+
+#[test]
+fn parse_pause_sessions_no_filters() {
+    let cli = Cli::try_parse_from(["kasmctl", "pause", "sessions"]).unwrap();
+    let Command::Pause(args) = cli.command else {
+        panic!("expected Pause command");
+    };
+    let PauseResource::Sessions { filters, yes } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert!(filters.is_empty());
+    assert!(!yes);
+}
+
+#[test]
+fn parse_pause_sessions_with_status() {
+    let cli = Cli::try_parse_from(["kasmctl", "pause", "sessions", "--status", "running"]).unwrap();
+    let Command::Pause(args) = cli.command else {
+        panic!("expected Pause command");
+    };
+    let PauseResource::Sessions { filters, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert_eq!(filters.status.as_deref(), Some("running"));
+}
+
+#[test]
+fn parse_pause_sessions_all_filters() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "pause",
+        "sessions",
+        "--status",
+        "running",
+        "--image",
+        "img-1",
+        "--user",
+        "user-1",
+        "--host",
+        "host-1",
+        "--created-before",
+        "2025-01-01 00:00:00",
+        "--created-after",
+        "2024-01-01 00:00:00",
+        "--idle-since",
+        "2025-06-01 00:00:00",
+        "--idle-for",
+        "1h30m",
+    ])
+    .unwrap();
+    let Command::Pause(args) = cli.command else {
+        panic!("expected Pause command");
+    };
+    let PauseResource::Sessions { filters, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert_eq!(filters.status.as_deref(), Some("running"));
+    assert_eq!(filters.image.as_deref(), Some("img-1"));
+    assert_eq!(filters.user.as_deref(), Some("user-1"));
+    assert_eq!(filters.host.as_deref(), Some("host-1"));
+    assert_eq!(
+        filters.created_before.as_deref(),
+        Some("2025-01-01 00:00:00")
+    );
+    assert_eq!(
+        filters.created_after.as_deref(),
+        Some("2024-01-01 00:00:00")
+    );
+    assert_eq!(filters.idle_since.as_deref(), Some("2025-06-01 00:00:00"));
+    assert_eq!(filters.idle_for.as_deref(), Some("1h30m"));
+}
+
+#[test]
+fn parse_pause_sessions_yes_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "pause", "sessions", "--yes"]).unwrap();
+    let Command::Pause(args) = cli.command else {
+        panic!("expected Pause command");
+    };
+    let PauseResource::Sessions { yes, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert!(yes);
+}
+
+#[test]
+fn parse_pause_sessions_yes_short_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "pause", "sessions", "-y"]).unwrap();
+    let Command::Pause(args) = cli.command else {
+        panic!("expected Pause command");
+    };
+    let PauseResource::Sessions { yes, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert!(yes);
+}
+
+#[test]
+fn parse_pause_kasms_alias() {
+    let cli = Cli::try_parse_from(["kasmctl", "pause", "kasms"]).unwrap();
+    let Command::Pause(args) = cli.command else {
+        panic!("expected Pause command");
+    };
+    assert!(matches!(args.resource, PauseResource::Sessions { .. }));
+}
+
+// --- Resume sessions tests ---
+
+#[test]
+fn parse_resume_sessions_no_filters() {
+    let cli = Cli::try_parse_from(["kasmctl", "resume", "sessions"]).unwrap();
+    let Command::Resume(args) = cli.command else {
+        panic!("expected Resume command");
+    };
+    let ResumeResource::Sessions { filters, yes } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert!(filters.is_empty());
+    assert!(!yes);
+}
+
+#[test]
+fn parse_resume_sessions_with_status() {
+    let cli =
+        Cli::try_parse_from(["kasmctl", "resume", "sessions", "--status", "stopped"]).unwrap();
+    let Command::Resume(args) = cli.command else {
+        panic!("expected Resume command");
+    };
+    let ResumeResource::Sessions { filters, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert_eq!(filters.status.as_deref(), Some("stopped"));
+}
+
+#[test]
+fn parse_resume_sessions_all_filters() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "resume",
+        "sessions",
+        "--status",
+        "stopped",
+        "--image",
+        "img-1",
+        "--user",
+        "user-1",
+        "--host",
+        "host-1",
+        "--created-before",
+        "2025-01-01 00:00:00",
+        "--created-after",
+        "2024-01-01 00:00:00",
+        "--idle-since",
+        "2025-06-01 00:00:00",
+        "--idle-for",
+        "1h30m",
+    ])
+    .unwrap();
+    let Command::Resume(args) = cli.command else {
+        panic!("expected Resume command");
+    };
+    let ResumeResource::Sessions { filters, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert_eq!(filters.status.as_deref(), Some("stopped"));
+    assert_eq!(filters.image.as_deref(), Some("img-1"));
+    assert_eq!(filters.user.as_deref(), Some("user-1"));
+    assert_eq!(filters.host.as_deref(), Some("host-1"));
+    assert_eq!(
+        filters.created_before.as_deref(),
+        Some("2025-01-01 00:00:00")
+    );
+    assert_eq!(
+        filters.created_after.as_deref(),
+        Some("2024-01-01 00:00:00")
+    );
+    assert_eq!(filters.idle_since.as_deref(), Some("2025-06-01 00:00:00"));
+    assert_eq!(filters.idle_for.as_deref(), Some("1h30m"));
+}
+
+#[test]
+fn parse_resume_sessions_yes_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "resume", "sessions", "--yes"]).unwrap();
+    let Command::Resume(args) = cli.command else {
+        panic!("expected Resume command");
+    };
+    let ResumeResource::Sessions { yes, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert!(yes);
+}
+
+#[test]
+fn parse_resume_sessions_yes_short_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "resume", "sessions", "-y"]).unwrap();
+    let Command::Resume(args) = cli.command else {
+        panic!("expected Resume command");
+    };
+    let ResumeResource::Sessions { yes, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
+    assert!(yes);
+}
+
+#[test]
+fn parse_resume_kasms_alias() {
+    let cli = Cli::try_parse_from(["kasmctl", "resume", "kasms"]).unwrap();
+    let Command::Resume(args) = cli.command else {
+        panic!("expected Resume command");
+    };
+    assert!(matches!(args.resource, ResumeResource::Sessions { .. }));
 }

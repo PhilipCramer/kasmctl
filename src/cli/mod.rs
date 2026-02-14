@@ -1,4 +1,5 @@
 pub mod config_cmd;
+pub mod filters;
 pub mod verbs;
 
 use clap::Parser;

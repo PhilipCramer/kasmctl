@@ -83,6 +83,17 @@ kasmctl pause session <SESSION_ID>
 kasmctl resume session <SESSION_ID>
 ```
 
+### Bulk session operations
+
+Stop, pause, or resume multiple sessions at once using filters:
+
+```sh
+kasmctl stop sessions --status running
+kasmctl pause sessions --idle-for 2h --yes
+kasmctl resume sessions --user <USER_ID>
+kasmctl get sessions --image <IMAGE_ID> --created-after "2024-01-01 00:00:00"
+```
+
 ## Usage
 
 ```
@@ -103,17 +114,38 @@ kasmctl [OPTIONS] <COMMAND>
 | Command | Description |
 |---|---|
 | `get session <ID>` | Get details for a specific session |
-| `get sessions [--status <STATUS>]` | List all sessions, optionally filtered by status |
+| `get sessions [FILTERS]` | List all sessions, optionally filtered |
 | `get image <ID>` | Get details for a specific image |
 | `get images` | List all available workspace images |
 | `create session --image <ID> [--user <ID>]` | Create a new session from a workspace image |
 | `delete session <ID>` | Delete a session |
 | `stop session <ID>` | Stop a session (frees memory/CPU, keeps disk) |
+| `stop sessions [FILTERS] [-y]` | Stop multiple sessions matching filters |
 | `pause session <ID>` | Pause a session (retains memory, stops CPU) |
+| `pause sessions [FILTERS] [-y]` | Pause multiple sessions matching filters |
 | `resume session <ID>` | Resume a stopped or paused session |
+| `resume sessions [FILTERS] [-y]` | Resume multiple sessions matching filters |
 | `config set-context <NAME>` | Add or update a context |
 | `config use-context <NAME>` | Switch the active context |
 | `config get-contexts` | List all configured contexts |
+
+### Session filter options
+
+Bulk commands (`stop sessions`, `pause sessions`, `resume sessions`) and `get sessions` accept the following filters:
+
+| Option | Description |
+|---|---|
+| `--status <STATUS>` | Filter by session status (case-insensitive) |
+| `--image <IMAGE_ID>` | Filter by image ID |
+| `--user <USER_ID>` | Filter by user ID |
+| `--host <HOSTNAME>` | Filter by hostname |
+| `--created-before <DATETIME>` | Sessions created before this time (`YYYY-MM-DD HH:MM:SS`) |
+| `--created-after <DATETIME>` | Sessions created after this time |
+| `--idle-since <DATETIME>` | Sessions idle (no keepalive) since this time |
+| `--idle-for <DURATION>` | Sessions idle for at least this duration (e.g. `30m`, `2h`, `1d`) |
+| `-y, --yes` | Skip confirmation prompt (bulk operations only) |
+
+Multiple filters can be combined and are applied with AND logic.
 
 ### Resource aliases
 
@@ -123,6 +155,7 @@ Session resources accept `kasm` (singular) and `kasms` (plural) as aliases:
 kasmctl get kasm <ID>        # same as: get session <ID>
 kasmctl get kasms             # same as: get sessions
 kasmctl stop kasm <ID>        # same as: stop session <ID>
+kasmctl stop kasms --status running  # same as: stop sessions --status running
 kasmctl delete kasm <ID>      # same as: delete session <ID>
 ```
 

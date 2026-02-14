@@ -1,5 +1,7 @@
 use clap::{Args, Subcommand};
 
+use crate::cli::filters::SessionFilters;
+
 #[derive(Args)]
 pub struct GetArgs {
     #[command(subcommand)]
@@ -17,9 +19,8 @@ pub enum GetResource {
     /// List all sessions
     #[command(alias = "kasms")]
     Sessions {
-        /// Filter sessions by status (case-insensitive)
-        #[arg(long)]
-        status: Option<String>,
+        #[command(flatten)]
+        filters: SessionFilters,
     },
     /// Get a specific image by ID
     Image {

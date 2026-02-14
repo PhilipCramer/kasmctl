@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::resource::Resource;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Session {
     pub kasm_id: String,
     #[serde(default)]

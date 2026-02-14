@@ -13,6 +13,7 @@ use kasmctl::cli::verbs::stop::StopResource;
 use kasmctl::cli::{Cli, Command};
 use kasmctl::config::model::{Context as KasmContext, NamedContext};
 use kasmctl::config::{load_config, save_config};
+use kasmctl::confirm;
 use kasmctl::output::{self, OutputFormat};
 
 #[tokio::main]
@@ -55,19 +56,12 @@ async fn handle_get(
                 .context("failed to get session")?;
             println!("{}", output::render_one(&session, format)?);
         }
-        GetResource::Sessions { status: filter } => {
+        GetResource::Sessions { filters } => {
             let mut sessions = client
                 .get_kasms()
                 .await
                 .context("failed to list sessions")?;
-            if let Some(ref status) = filter {
-                let status_lower = status.to_lowercase();
-                sessions.retain(|s| {
-                    s.status
-                        .as_ref()
-                        .is_some_and(|v| v.to_lowercase() == status_lower)
-                });
-            }
+            filters.apply(&mut sessions);
             println!("{}", output::render_list(&sessions, format)?);
         }
         GetResource::Image { id } => {
@@ -142,6 +136,45 @@ async fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> 
                 .context("failed to stop session")?;
             println!("Session {id} stopped.");
         }
+        StopResource::Sessions { filters, yes } => {
+            let mut sessions = client
+                .get_kasms()
+                .await
+                .context("failed to list sessions")?;
+            filters.apply(&mut sessions);
+
+            if sessions.is_empty() {
+                eprintln!("No sessions match the given filters.");
+                return Ok(());
+            }
+
+            let msg = if filters.is_empty() {
+                format!("Stop ALL {} sessions?", sessions.len())
+            } else {
+                format!("Stop {} matching sessions?", sessions.len())
+            };
+            if !confirm::confirm(&msg, yes) {
+                eprintln!("Aborted.");
+                return Ok(());
+            }
+
+            let total = sessions.len();
+            let mut failed = 0usize;
+            for s in &sessions {
+                match client.stop_kasm(&s.kasm_id).await {
+                    Ok(()) => eprintln!("  {} ok", s.kasm_id),
+                    Err(e) => {
+                        eprintln!("  {} FAILED: {e}", s.kasm_id);
+                        failed += 1;
+                    }
+                }
+            }
+
+            eprintln!("Stopped {}/{} sessions.", total - failed, total);
+            if failed > 0 {
+                anyhow::bail!("{failed} session(s) failed to stop");
+            }
+        }
     }
     Ok(())
 }
@@ -155,6 +188,45 @@ async fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()
                 .context("failed to pause session")?;
             println!("Session {id} paused.");
         }
+        PauseResource::Sessions { filters, yes } => {
+            let mut sessions = client
+                .get_kasms()
+                .await
+                .context("failed to list sessions")?;
+            filters.apply(&mut sessions);
+
+            if sessions.is_empty() {
+                eprintln!("No sessions match the given filters.");
+                return Ok(());
+            }
+
+            let msg = if filters.is_empty() {
+                format!("Pause ALL {} sessions?", sessions.len())
+            } else {
+                format!("Pause {} matching sessions?", sessions.len())
+            };
+            if !confirm::confirm(&msg, yes) {
+                eprintln!("Aborted.");
+                return Ok(());
+            }
+
+            let total = sessions.len();
+            let mut failed = 0usize;
+            for s in &sessions {
+                match client.pause_kasm(&s.kasm_id).await {
+                    Ok(()) => eprintln!("  {} ok", s.kasm_id),
+                    Err(e) => {
+                        eprintln!("  {} FAILED: {e}", s.kasm_id);
+                        failed += 1;
+                    }
+                }
+            }
+
+            eprintln!("Paused {}/{} sessions.", total - failed, total);
+            if failed > 0 {
+                anyhow::bail!("{failed} session(s) failed to pause");
+            }
+        }
     }
     Ok(())
 }
@@ -167,6 +239,45 @@ async fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<
                 .await
                 .context("failed to resume session")?;
             println!("Session {id} resumed.");
+        }
+        ResumeResource::Sessions { filters, yes } => {
+            let mut sessions = client
+                .get_kasms()
+                .await
+                .context("failed to list sessions")?;
+            filters.apply(&mut sessions);
+
+            if sessions.is_empty() {
+                eprintln!("No sessions match the given filters.");
+                return Ok(());
+            }
+
+            let msg = if filters.is_empty() {
+                format!("Resume ALL {} sessions?", sessions.len())
+            } else {
+                format!("Resume {} matching sessions?", sessions.len())
+            };
+            if !confirm::confirm(&msg, yes) {
+                eprintln!("Aborted.");
+                return Ok(());
+            }
+
+            let total = sessions.len();
+            let mut failed = 0usize;
+            for s in &sessions {
+                match client.resume_kasm(&s.kasm_id).await {
+                    Ok(()) => eprintln!("  {} ok", s.kasm_id),
+                    Err(e) => {
+                        eprintln!("  {} FAILED: {e}", s.kasm_id);
+                        failed += 1;
+                    }
+                }
+            }
+
+            eprintln!("Resumed {}/{} sessions.", total - failed, total);
+            if failed > 0 {
+                anyhow::bail!("{failed} session(s) failed to resume");
+            }
         }
     }
     Ok(())
