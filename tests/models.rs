@@ -59,27 +59,40 @@ fn arb_image() -> impl Strategy<Value = Image> {
 
 fn arb_session() -> impl Strategy<Value = Session> {
     (
-        "[a-zA-Z0-9-]{1,36}",
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
+        (
+            "[a-zA-Z0-9-]{1,36}",
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+        ),
+        (
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+        ),
     )
         .prop_map(
             |(
-                kasm_id,
-                user_id,
-                status,
-                image_id,
-                username,
-                share_id,
-                kasm_url,
-                created_date,
-                expiration_date,
+                (
+                    kasm_id,
+                    user_id,
+                    status,
+                    image_id,
+                    username,
+                    share_id,
+                    kasm_url,
+                    created_date,
+                    expiration_date,
+                ),
+                (hostname, server_id, keepalive_date, start_date, operational_status, container_id),
             )| {
                 Session {
                     kasm_id,
@@ -91,6 +104,12 @@ fn arb_session() -> impl Strategy<Value = Session> {
                     kasm_url,
                     created_date,
                     expiration_date,
+                    hostname,
+                    server_id,
+                    keepalive_date,
+                    start_date,
+                    operational_status,
+                    container_id,
                 }
             },
         )
@@ -200,6 +219,30 @@ proptest! {
             let val = lookup("EXPIRES");
             prop_assert_eq!(val.as_deref(), Some(""));
         }
+        if session.hostname.is_none() {
+            let val = lookup("HOSTNAME");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if session.server_id.is_none() {
+            let val = lookup("SERVER ID");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if session.keepalive_date.is_none() {
+            let val = lookup("KEEPALIVE");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if session.start_date.is_none() {
+            let val = lookup("STARTED");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if session.operational_status.is_none() {
+            let val = lookup("OPERATIONAL STATUS");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if session.container_id.is_none() {
+            let val = lookup("CONTAINER ID");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
     }
 
     // --- Image ---
@@ -302,7 +345,20 @@ fn table_headers_are_correct() {
 #[test]
 fn table_detail_has_all_labels() {
     let expected_labels = vec![
-        "KASM ID", "STATUS", "IMAGE ID", "USERNAME", "USER ID", "SHARE ID", "KASM URL", "CREATED",
+        "KASM ID",
+        "STATUS",
+        "OPERATIONAL STATUS",
+        "IMAGE ID",
+        "USERNAME",
+        "USER ID",
+        "HOSTNAME",
+        "SERVER ID",
+        "CONTAINER ID",
+        "SHARE ID",
+        "KASM URL",
+        "STARTED",
+        "KEEPALIVE",
+        "CREATED",
         "EXPIRES",
     ];
     let session = Session {
@@ -315,6 +371,12 @@ fn table_detail_has_all_labels() {
         kasm_url: None,
         created_date: None,
         expiration_date: None,
+        hostname: None,
+        server_id: None,
+        keepalive_date: None,
+        start_date: None,
+        operational_status: None,
+        container_id: None,
     };
     let detail = session.table_detail();
     let labels: Vec<&str> = detail.iter().map(|(k, _)| *k).collect();
@@ -333,6 +395,12 @@ fn table_detail_contains_field_values() {
         kasm_url: Some("https://kasm.example.com/session".into()),
         created_date: Some("2026-01-01T00:00:00Z".into()),
         expiration_date: Some("2026-01-02T00:00:00Z".into()),
+        hostname: Some("kasm-host-01".into()),
+        server_id: Some("server-abc".into()),
+        keepalive_date: Some("2026-01-01T12:00:00Z".into()),
+        start_date: Some("2026-01-01T00:05:00Z".into()),
+        operational_status: Some("running".into()),
+        container_id: Some("container-xyz".into()),
     };
     let detail = session.table_detail();
     let lookup = |label: &str| {
@@ -344,11 +412,17 @@ fn table_detail_contains_field_values() {
     };
     assert_eq!(lookup("KASM ID"), "abc-123");
     assert_eq!(lookup("STATUS"), "running");
+    assert_eq!(lookup("OPERATIONAL STATUS"), "running");
     assert_eq!(lookup("IMAGE ID"), "img-789");
     assert_eq!(lookup("USERNAME"), "alice");
     assert_eq!(lookup("USER ID"), "user-456");
+    assert_eq!(lookup("HOSTNAME"), "kasm-host-01");
+    assert_eq!(lookup("SERVER ID"), "server-abc");
+    assert_eq!(lookup("CONTAINER ID"), "container-xyz");
     assert_eq!(lookup("SHARE ID"), "share-001");
     assert_eq!(lookup("KASM URL"), "https://kasm.example.com/session");
+    assert_eq!(lookup("STARTED"), "2026-01-01T00:05:00Z");
+    assert_eq!(lookup("KEEPALIVE"), "2026-01-01T12:00:00Z");
     assert_eq!(lookup("CREATED"), "2026-01-01T00:00:00Z");
     assert_eq!(lookup("EXPIRES"), "2026-01-02T00:00:00Z");
 }

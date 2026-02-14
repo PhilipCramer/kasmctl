@@ -45,10 +45,14 @@ async fn handle_get(
     format: &OutputFormat,
 ) -> Result<()> {
     match resource {
-        GetResource::Sessions {
-            id: None,
-            status: filter,
-        } => {
+        GetResource::Session { id } => {
+            let session = client
+                .get_kasm_status(&id)
+                .await
+                .context("failed to get session")?;
+            println!("{}", output::render_one(&session, format)?);
+        }
+        GetResource::Sessions { status: filter } => {
             let mut sessions = client
                 .get_kasms()
                 .await
@@ -63,27 +67,17 @@ async fn handle_get(
             }
             println!("{}", output::render_list(&sessions, format)?);
         }
-        GetResource::Sessions {
-            id: Some(id),
-            status: _,
-        } => {
-            let session = client
-                .get_kasm_status(&id)
-                .await
-                .context("failed to get session")?;
-            println!("{}", output::render_one(&session, format)?);
-        }
-        GetResource::Images { id: None } => {
-            let images = client.get_images().await.context("failed to list images")?;
-            println!("{}", output::render_list(&images, format)?);
-        }
-        GetResource::Images { id: Some(id) } => {
+        GetResource::Image { id } => {
             let images = client.get_images().await.context("failed to list images")?;
             let image = images
                 .into_iter()
                 .find(|img| img.image_id == id)
                 .ok_or_else(|| anyhow::anyhow!("image {id:?} not found"))?;
             println!("{}", output::render_one(&image, format)?);
+        }
+        GetResource::Images => {
+            let images = client.get_images().await.context("failed to list images")?;
+            println!("{}", output::render_list(&images, format)?);
         }
     }
     Ok(())

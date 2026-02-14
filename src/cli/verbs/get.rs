@@ -8,19 +8,24 @@ pub struct GetArgs {
 
 #[derive(Subcommand)]
 pub enum GetResource {
-    /// List or get sessions
-    #[command(alias = "session", alias = "kasm", alias = "kasms")]
+    /// Get a specific session by ID
+    #[command(alias = "kasm")]
+    Session {
+        /// Session ID
+        id: String,
+    },
+    /// List all sessions
+    #[command(alias = "kasms")]
     Sessions {
-        /// Session ID to get a specific session
-        id: Option<String>,
         /// Filter sessions by status (case-insensitive)
         #[arg(long)]
         status: Option<String>,
     },
-    /// List available workspace images
-    #[command(alias = "image")]
-    Images {
-        /// Image ID to get details for a specific image
-        id: Option<String>,
+    /// Get a specific image by ID
+    Image {
+        /// Image ID
+        id: String,
     },
+    /// List all available workspace images
+    Images,
 }

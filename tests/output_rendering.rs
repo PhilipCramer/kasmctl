@@ -52,27 +52,40 @@ fn arb_images() -> impl Strategy<Value = Vec<Image>> {
 
 fn arb_session() -> impl Strategy<Value = Session> {
     (
-        "[a-zA-Z0-9-]{1,36}",
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
+        (
+            "[a-zA-Z0-9-]{1,36}",
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+        ),
+        (
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+        ),
     )
         .prop_map(
             |(
-                kasm_id,
-                user_id,
-                status,
-                image_id,
-                username,
-                share_id,
-                kasm_url,
-                created_date,
-                expiration_date,
+                (
+                    kasm_id,
+                    user_id,
+                    status,
+                    image_id,
+                    username,
+                    share_id,
+                    kasm_url,
+                    created_date,
+                    expiration_date,
+                ),
+                (hostname, server_id, keepalive_date, start_date, operational_status, container_id),
             )| {
                 Session {
                     kasm_id,
@@ -84,6 +97,12 @@ fn arb_session() -> impl Strategy<Value = Session> {
                     kasm_url,
                     created_date,
                     expiration_date,
+                    hostname,
+                    server_id,
+                    keepalive_date,
+                    start_date,
+                    operational_status,
+                    container_id,
                 }
             },
         )
@@ -132,8 +151,9 @@ proptest! {
     fn table_detail_contains_all_labels(session in arb_session()) {
         let output = output::render_one(&session, &OutputFormat::Table).unwrap();
         for label in &[
-            "KASM ID", "STATUS", "IMAGE ID", "USERNAME", "USER ID",
-            "SHARE ID", "KASM URL", "CREATED", "EXPIRES",
+            "KASM ID", "STATUS", "OPERATIONAL STATUS", "IMAGE ID", "USERNAME", "USER ID",
+            "HOSTNAME", "SERVER ID", "CONTAINER ID",
+            "SHARE ID", "KASM URL", "STARTED", "KEEPALIVE", "CREATED", "EXPIRES",
         ] {
             prop_assert!(output.contains(label), "missing label: {}", label);
         }
@@ -180,6 +200,12 @@ fn table_detail_contains_field_values() {
         kasm_url: Some("https://kasm.example.com/session".into()),
         created_date: Some("2026-01-01T00:00:00Z".into()),
         expiration_date: Some("2026-01-02T00:00:00Z".into()),
+        hostname: None,
+        server_id: None,
+        keepalive_date: None,
+        start_date: None,
+        operational_status: None,
+        container_id: None,
     };
     let output = output::render_one(&session, &OutputFormat::Table).unwrap();
     assert!(output.contains("abc-123"));
@@ -205,6 +231,12 @@ fn table_detail_handles_none_fields() {
         kasm_url: None,
         created_date: None,
         expiration_date: None,
+        hostname: None,
+        server_id: None,
+        keepalive_date: None,
+        start_date: None,
+        operational_status: None,
+        container_id: None,
     };
     // Should not panic and should still contain the kasm_id and all labels
     let output = output::render_one(&session, &OutputFormat::Table).unwrap();
@@ -227,6 +259,12 @@ fn table_list_still_uses_compact_headers() {
         kasm_url: Some("https://kasm.example.com/session".into()),
         created_date: Some("2026-01-01T00:00:00Z".into()),
         expiration_date: Some("2026-01-02T00:00:00Z".into()),
+        hostname: None,
+        server_id: None,
+        keepalive_date: None,
+        start_date: None,
+        operational_status: None,
+        container_id: None,
     };
     let output = output::render_list(&[session], &OutputFormat::Table).unwrap();
     // List view uses compact 5-column headers
@@ -252,6 +290,12 @@ fn json_render_one_is_pretty_printed() {
         kasm_url: None,
         created_date: None,
         expiration_date: None,
+        hostname: None,
+        server_id: None,
+        keepalive_date: None,
+        start_date: None,
+        operational_status: None,
+        container_id: None,
     };
     let output = output::render_one(&session, &OutputFormat::Json).unwrap();
     assert!(output.contains('\n'), "expected pretty-printed JSON");
