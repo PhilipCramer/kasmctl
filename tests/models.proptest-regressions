@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc af260598302b61dd410478280615adf43432743d3caecb3208c043b5707c61ee # shrinks to image = Image { image_id: "-", friendly_name: None, name: None, description: None, enabled: None, cores: Some(14.195243007961219), memory: None, image_src: None }
