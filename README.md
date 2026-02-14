@@ -4,7 +4,8 @@ A command-line tool for managing [Kasm Workspaces](https://kasm.com), inspired b
 
 ## Features
 
-- **Session management** — list, create, and delete Kasm workspace sessions
+- **Session management** — list, inspect, create, delete, stop, pause, and resume sessions
+- **Image browsing** — list and inspect available workspace images
 - **Multi-context configuration** — manage multiple Kasm servers with kubeconfig-style contexts
 - **Flexible output** — table, JSON, and YAML output formats
 
@@ -55,6 +56,20 @@ kasmctl create session --image <IMAGE_ID>
 kasmctl delete session <SESSION_ID>
 ```
 
+### List images
+
+```sh
+kasmctl get images
+```
+
+### Stop, pause, or resume a session
+
+```sh
+kasmctl stop session <SESSION_ID>
+kasmctl pause session <SESSION_ID>
+kasmctl resume session <SESSION_ID>
+```
+
 ## Usage
 
 ```
@@ -73,9 +88,13 @@ kasmctl [OPTIONS] <COMMAND>
 
 | Command | Description |
 |---|---|
-| `get sessions [ID]` | List all sessions or get a specific session |
+| `get sessions [ID] [--status <STATUS>]` | List all sessions or get a specific session |
+| `get images [ID]` | List all images or get a specific image |
 | `create session --image <ID>` | Create a new session from a workspace image |
 | `delete session <ID>` | Delete a session |
+| `stop session <ID>` | Stop a session (frees memory/CPU, keeps disk) |
+| `pause session <ID>` | Pause a session (retains memory, stops CPU) |
+| `resume session <ID>` | Resume a stopped or paused session |
 | `config set-context <NAME>` | Add or update a context |
 | `config use-context <NAME>` | Switch the active context |
 | `config get-contexts` | List all configured contexts |
