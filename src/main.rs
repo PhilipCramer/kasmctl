@@ -7,6 +7,9 @@ use kasmctl::cli::config_cmd::ConfigCommand;
 use kasmctl::cli::verbs::create::CreateResource;
 use kasmctl::cli::verbs::delete::DeleteResource;
 use kasmctl::cli::verbs::get::GetResource;
+use kasmctl::cli::verbs::pause::PauseResource;
+use kasmctl::cli::verbs::resume::ResumeResource;
+use kasmctl::cli::verbs::stop::StopResource;
 use kasmctl::cli::{Cli, Command};
 use kasmctl::config::model::{Context as KasmContext, NamedContext};
 use kasmctl::config::{load_config, save_config};
@@ -27,6 +30,9 @@ async fn main() -> Result<()> {
                 Command::Get(args) => handle_get(&client, args.resource, &cli.output).await,
                 Command::Create(args) => handle_create(&client, args.resource, &cli.output).await,
                 Command::Delete(args) => handle_delete(&client, args.resource).await,
+                Command::Stop(args) => handle_stop(&client, args.resource).await,
+                Command::Pause(args) => handle_pause(&client, args.resource).await,
+                Command::Resume(args) => handle_resume(&client, args.resource).await,
                 Command::Config(_) => unreachable!(),
             }
         }
@@ -125,6 +131,45 @@ async fn handle_delete(client: &KasmClient, resource: DeleteResource) -> Result<
                 .await
                 .context("failed to delete session")?;
             println!("Session {id} deleted.");
+        }
+    }
+    Ok(())
+}
+
+async fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> {
+    match resource {
+        StopResource::Session { id } => {
+            client
+                .stop_kasm(&id)
+                .await
+                .context("failed to stop session")?;
+            println!("Session {id} stopped.");
+        }
+    }
+    Ok(())
+}
+
+async fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()> {
+    match resource {
+        PauseResource::Session { id } => {
+            client
+                .pause_kasm(&id)
+                .await
+                .context("failed to pause session")?;
+            println!("Session {id} paused.");
+        }
+    }
+    Ok(())
+}
+
+async fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<()> {
+    match resource {
+        ResumeResource::Session { id } => {
+            client
+                .resume_kasm(&id)
+                .await
+                .context("failed to resume session")?;
+            println!("Session {id} resumed.");
         }
     }
     Ok(())

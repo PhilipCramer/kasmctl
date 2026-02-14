@@ -3,6 +3,9 @@ use kasmctl::cli::config_cmd::ConfigCommand;
 use kasmctl::cli::verbs::create::CreateResource;
 use kasmctl::cli::verbs::delete::DeleteResource;
 use kasmctl::cli::verbs::get::GetResource;
+use kasmctl::cli::verbs::pause::PauseResource;
+use kasmctl::cli::verbs::resume::ResumeResource;
+use kasmctl::cli::verbs::stop::StopResource;
 use kasmctl::cli::{Cli, Command};
 use kasmctl::output::OutputFormat;
 
@@ -187,6 +190,78 @@ fn parse_delete_session_missing_id_fails() {
 fn parse_delete_kasm_alias() {
     let cli = Cli::try_parse_from(["kasmctl", "delete", "kasm", "kasm-789"]).unwrap();
     assert!(matches!(cli.command, Command::Delete(_)));
+}
+
+// --- Stop commands ---
+
+#[test]
+fn parse_stop_session() {
+    let cli = Cli::try_parse_from(["kasmctl", "stop", "session", "kasm-789"]).unwrap();
+    let Command::Stop(args) = cli.command else {
+        panic!("expected Stop command");
+    };
+    let StopResource::Session { id } = args.resource;
+    assert_eq!(id, "kasm-789");
+}
+
+#[test]
+fn parse_stop_kasm_alias() {
+    let cli = Cli::try_parse_from(["kasmctl", "stop", "kasm", "kasm-789"]).unwrap();
+    assert!(matches!(cli.command, Command::Stop(_)));
+}
+
+#[test]
+fn parse_stop_session_missing_id_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "stop", "session"]);
+    assert!(result.is_err());
+}
+
+// --- Pause commands ---
+
+#[test]
+fn parse_pause_session() {
+    let cli = Cli::try_parse_from(["kasmctl", "pause", "session", "kasm-789"]).unwrap();
+    let Command::Pause(args) = cli.command else {
+        panic!("expected Pause command");
+    };
+    let PauseResource::Session { id } = args.resource;
+    assert_eq!(id, "kasm-789");
+}
+
+#[test]
+fn parse_pause_kasm_alias() {
+    let cli = Cli::try_parse_from(["kasmctl", "pause", "kasm", "kasm-789"]).unwrap();
+    assert!(matches!(cli.command, Command::Pause(_)));
+}
+
+#[test]
+fn parse_pause_session_missing_id_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "pause", "session"]);
+    assert!(result.is_err());
+}
+
+// --- Resume commands ---
+
+#[test]
+fn parse_resume_session() {
+    let cli = Cli::try_parse_from(["kasmctl", "resume", "session", "kasm-789"]).unwrap();
+    let Command::Resume(args) = cli.command else {
+        panic!("expected Resume command");
+    };
+    let ResumeResource::Session { id } = args.resource;
+    assert_eq!(id, "kasm-789");
+}
+
+#[test]
+fn parse_resume_kasm_alias() {
+    let cli = Cli::try_parse_from(["kasmctl", "resume", "kasm", "kasm-789"]).unwrap();
+    assert!(matches!(cli.command, Command::Resume(_)));
+}
+
+#[test]
+fn parse_resume_session_missing_id_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "resume", "session"]);
+    assert!(result.is_err());
 }
 
 // --- Config commands ---
