@@ -21,6 +21,18 @@ pub struct Session {
     pub created_date: Option<String>,
     #[serde(default)]
     pub expiration_date: Option<String>,
+    #[serde(default)]
+    pub hostname: Option<String>,
+    #[serde(default)]
+    pub server_id: Option<String>,
+    #[serde(default)]
+    pub keepalive_date: Option<String>,
+    #[serde(default)]
+    pub start_date: Option<String>,
+    #[serde(default)]
+    pub operational_status: Option<String>,
+    #[serde(default)]
+    pub container_id: Option<String>,
 }
 
 impl Resource for Session {
@@ -46,11 +58,23 @@ impl Resource for Session {
         vec![
             ("KASM ID", self.kasm_id.clone()),
             ("STATUS", self.status.clone().unwrap_or_default()),
+            (
+                "OPERATIONAL STATUS",
+                self.operational_status.clone().unwrap_or_default(),
+            ),
             ("IMAGE ID", self.image_id.clone().unwrap_or_default()),
             ("USERNAME", self.username.clone().unwrap_or_default()),
             ("USER ID", self.user_id.clone().unwrap_or_default()),
+            ("HOSTNAME", self.hostname.clone().unwrap_or_default()),
+            ("SERVER ID", self.server_id.clone().unwrap_or_default()),
+            (
+                "CONTAINER ID",
+                self.container_id.clone().unwrap_or_default(),
+            ),
             ("SHARE ID", self.share_id.clone().unwrap_or_default()),
             ("KASM URL", self.kasm_url.clone().unwrap_or_default()),
+            ("STARTED", self.start_date.clone().unwrap_or_default()),
+            ("KEEPALIVE", self.keepalive_date.clone().unwrap_or_default()),
             ("CREATED", self.created_date.clone().unwrap_or_default()),
             ("EXPIRES", self.expiration_date.clone().unwrap_or_default()),
         ]
