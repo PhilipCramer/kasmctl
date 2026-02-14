@@ -81,7 +81,6 @@ impl KasmClient {
             .into());
         }
 
-        serde_json::from_str(&text)
-            .map_err(|e| ApiError::Deserialization(format!("{e}")).into())
+        serde_json::from_str(&text).map_err(|e| ApiError::Deserialization(format!("{e}")).into())
     }
 }

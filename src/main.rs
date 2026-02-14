@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use comfy_table::{presets::UTF8_FULL_CONDENSED, Table};
+use comfy_table::{Table, presets::UTF8_FULL_CONDENSED};
 
 use kasmctl::api::KasmClient;
 use kasmctl::cli::config_cmd::ConfigCommand;
@@ -19,17 +19,13 @@ async fn main() -> Result<()> {
     match cli.command {
         Command::Config(args) => handle_config(args.command),
         cmd => {
-            let ctx = kasmctl::config::resolve_context(
-                cli.server.as_deref(),
-                cli.context.as_deref(),
-            )?;
+            let ctx =
+                kasmctl::config::resolve_context(cli.server.as_deref(), cli.context.as_deref())?;
             let client = KasmClient::new(&ctx)?;
 
             match cmd {
                 Command::Get(args) => handle_get(&client, args.resource, &cli.output).await,
-                Command::Create(args) => {
-                    handle_create(&client, args.resource, &cli.output).await
-                }
+                Command::Create(args) => handle_create(&client, args.resource, &cli.output).await,
                 Command::Delete(args) => handle_delete(&client, args.resource).await,
                 Command::Config(_) => unreachable!(),
             }
@@ -44,7 +40,10 @@ async fn handle_get(
 ) -> Result<()> {
     match resource {
         GetResource::Sessions { id: None } => {
-            let sessions = client.get_kasms().await.context("failed to list sessions")?;
+            let sessions = client
+                .get_kasms()
+                .await
+                .context("failed to list sessions")?;
             println!("{}", output::render_list(&sessions, format)?);
         }
         GetResource::Sessions { id: Some(id) } => {

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use comfy_table::{presets::UTF8_FULL_CONDENSED, Table};
+use comfy_table::{Table, presets::UTF8_FULL_CONDENSED};
 
 use crate::resource::Resource;
 

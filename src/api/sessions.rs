@@ -46,8 +46,7 @@ impl KasmClient {
             user_id: Option<&'a str>,
         }
 
-        self.post("request_kasm", &Req { image_id, user_id })
-            .await
+        self.post("request_kasm", &Req { image_id, user_id }).await
     }
 
     pub async fn destroy_kasm(&self, kasm_id: &str) -> Result<()> {

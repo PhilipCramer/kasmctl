@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct KasmConfig {
     #[serde(rename = "current-context", skip_serializing_if = "Option::is_none")]
     pub current_context: Option<String>,
@@ -8,14 +8,14 @@ pub struct KasmConfig {
     pub contexts: Vec<NamedContext>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct NamedContext {
     pub name: String,
     #[serde(flatten)]
     pub context: Context,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct Context {
     pub server: String,
     #[serde(rename = "api-key")]

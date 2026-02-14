@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::resource::Resource;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Session {
     pub kasm_id: String,
     #[serde(default)]
@@ -44,7 +44,7 @@ impl Resource for Session {
 }
 
 /// Response from the `request_kasm` endpoint.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct CreateSessionResponse {
     pub kasm_id: String,
     #[serde(default)]
