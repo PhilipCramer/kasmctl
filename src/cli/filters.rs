@@ -71,10 +71,14 @@ impl SessionFilters {
         sessions.retain(|s| {
             if let Some(ref status) = self.status {
                 let status_lower = status.to_lowercase();
-                if s.status
+                let matches = s
+                    .status
                     .as_ref()
-                    .is_none_or(|v| v.to_lowercase() != status_lower)
-                {
+                    .is_some_and(|v| v.to_lowercase() == status_lower)
+                    || s.operational_status
+                        .as_ref()
+                        .is_some_and(|v| v.to_lowercase() == status_lower);
+                if !matches {
                     return false;
                 }
             }
