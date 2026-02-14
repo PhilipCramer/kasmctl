@@ -3,6 +3,11 @@ name = "kasmctl"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
+description = "A command-line tool for managing Kasm Workspaces, inspired by kubectl"
+repository = "https://github.com/PhilipCramer/kasmctl"
+readme = "README.md"
+keywords = ["kasm", "cli", "workspaces", "remote-desktop"]
+categories = ["command-line-utilities"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
