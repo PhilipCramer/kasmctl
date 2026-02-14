@@ -42,6 +42,13 @@ kasmctl config use-context my-server
 
 ```sh
 kasmctl get sessions
+kasmctl get sessions --status running
+```
+
+### Get a specific session
+
+```sh
+kasmctl get session <SESSION_ID>
 ```
 
 ### Create a session
@@ -60,6 +67,12 @@ kasmctl delete session <SESSION_ID>
 
 ```sh
 kasmctl get images
+```
+
+### Get a specific image
+
+```sh
+kasmctl get image <IMAGE_ID>
 ```
 
 ### Stop, pause, or resume a session
@@ -88,8 +101,10 @@ kasmctl [OPTIONS] <COMMAND>
 
 | Command | Description |
 |---|---|
-| `get sessions [ID] [--status <STATUS>]` | List all sessions or get a specific session |
-| `get images [ID]` | List all images or get a specific image |
+| `get session <ID>` | Get details for a specific session |
+| `get sessions [--status <STATUS>]` | List all sessions, optionally filtered by status |
+| `get image <ID>` | Get details for a specific image |
+| `get images` | List all available workspace images |
 | `create session --image <ID>` | Create a new session from a workspace image |
 | `delete session <ID>` | Delete a session |
 | `stop session <ID>` | Stop a session (frees memory/CPU, keeps disk) |
