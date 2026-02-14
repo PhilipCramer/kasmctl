@@ -14,7 +14,9 @@ fn parse_get_sessions() {
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Sessions { id, status } = args.resource;
+    let GetResource::Sessions { id, status } = args.resource else {
+        panic!("expected Sessions resource");
+    };
     assert!(id.is_none());
     assert!(status.is_none());
 }
@@ -25,7 +27,9 @@ fn parse_get_sessions_with_id() {
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Sessions { id, status } = args.resource;
+    let GetResource::Sessions { id, status } = args.resource else {
+        panic!("expected Sessions resource");
+    };
     assert_eq!(id.as_deref(), Some("abc-123"));
     assert!(status.is_none());
 }
@@ -38,7 +42,9 @@ fn parse_get_sessions_with_status_filter() {
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Sessions { id, status } = args.resource;
+    let GetResource::Sessions { id, status } = args.resource else {
+        panic!("expected Sessions resource");
+    };
     assert!(id.is_none());
     assert_eq!(status.as_deref(), Some("running"));
 }
@@ -49,7 +55,9 @@ fn parse_get_sessions_without_status_defaults_to_none() {
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Sessions { status, .. } = args.resource;
+    let GetResource::Sessions { status, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
     assert!(status.is_none());
 }
 
@@ -59,7 +67,9 @@ fn parse_get_sessions_status_value_is_captured() {
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Sessions { status, .. } = args.resource;
+    let GetResource::Sessions { status, .. } = args.resource else {
+        panic!("expected Sessions resource");
+    };
     assert_eq!(status.unwrap(), "stopped");
 }
 
@@ -79,6 +89,41 @@ fn parse_get_kasm_alias() {
 fn parse_get_kasms_alias() {
     let cli = Cli::try_parse_from(["kasmctl", "get", "kasms"]).unwrap();
     assert!(matches!(cli.command, Command::Get(_)));
+}
+
+// --- Get images ---
+
+#[test]
+fn parse_get_images() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "images"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Images { id } = args.resource else {
+        panic!("expected Images resource");
+    };
+    assert!(id.is_none());
+}
+
+#[test]
+fn parse_get_image_singular_alias() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "image"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    assert!(matches!(args.resource, GetResource::Images { .. }));
+}
+
+#[test]
+fn parse_get_images_with_id() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "images", "img-abc"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Images { id } = args.resource else {
+        panic!("expected Images resource");
+    };
+    assert_eq!(id.as_deref(), Some("img-abc"));
 }
 
 // --- Create commands ---

@@ -67,6 +67,18 @@ async fn handle_get(
                 .context("failed to get session")?;
             println!("{}", output::render_one(&session, format)?);
         }
+        GetResource::Images { id: None } => {
+            let images = client.get_images().await.context("failed to list images")?;
+            println!("{}", output::render_list(&images, format)?);
+        }
+        GetResource::Images { id: Some(id) } => {
+            let images = client.get_images().await.context("failed to list images")?;
+            let image = images
+                .into_iter()
+                .find(|img| img.image_id == id)
+                .ok_or_else(|| anyhow::anyhow!("image {id:?} not found"))?;
+            println!("{}", output::render_one(&image, format)?);
+        }
     }
     Ok(())
 }

@@ -1,4 +1,5 @@
 pub mod error;
+pub mod images;
 pub mod sessions;
 
 use anyhow::{Context as _, Result};

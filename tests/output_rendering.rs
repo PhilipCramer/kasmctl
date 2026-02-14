@@ -1,9 +1,53 @@
+use kasmctl::models::image::Image;
 use kasmctl::models::session::Session;
 use kasmctl::output::{self, OutputFormat};
 use proptest::prelude::*;
 
 fn arb_option_string() -> impl Strategy<Value = Option<String>> {
     prop_oneof![Just(None), "[a-zA-Z0-9 _-]{0,50}".prop_map(Some),]
+}
+
+fn arb_option_bool() -> impl Strategy<Value = Option<bool>> {
+    prop_oneof![Just(None), any::<bool>().prop_map(Some),]
+}
+
+fn arb_option_f64() -> impl Strategy<Value = Option<f64>> {
+    prop_oneof![Just(None), (1.0..16.0f64).prop_map(Some),]
+}
+
+fn arb_option_memory() -> impl Strategy<Value = Option<i64>> {
+    prop_oneof![Just(None), (1i64..10_000_000_000i64).prop_map(Some),]
+}
+
+fn arb_image() -> impl Strategy<Value = Image> {
+    (
+        "[a-zA-Z0-9-]{1,36}",
+        arb_option_string(),
+        arb_option_string(),
+        arb_option_string(),
+        arb_option_bool(),
+        arb_option_f64(),
+        arb_option_memory(),
+        arb_option_string(),
+    )
+        .prop_map(
+            |(image_id, friendly_name, name, description, enabled, cores, memory, image_src)| {
+                Image {
+                    image_id,
+                    friendly_name,
+                    name,
+                    description,
+                    enabled,
+                    cores,
+                    memory,
+                    image_src,
+                }
+            },
+        )
+}
+
+fn arb_images() -> impl Strategy<Value = Vec<Image>> {
+    prop::collection::vec(arb_image(), 0..10)
 }
 
 fn arb_session() -> impl Strategy<Value = Session> {
@@ -211,4 +255,59 @@ fn json_render_one_is_pretty_printed() {
     };
     let output = output::render_one(&session, &OutputFormat::Json).unwrap();
     assert!(output.contains('\n'), "expected pretty-printed JSON");
+}
+
+// ===================== Image output rendering =====================
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(50))]
+
+    #[test]
+    fn image_json_render_list_produces_valid_json(images in arb_images()) {
+        let output = output::render_list(&images, &OutputFormat::Json).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        prop_assert!(parsed.is_array());
+        prop_assert_eq!(parsed.as_array().unwrap().len(), images.len());
+    }
+
+    #[test]
+    fn image_yaml_render_list_produces_valid_yaml(images in arb_images()) {
+        let output = output::render_list(&images, &OutputFormat::Yaml).unwrap();
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&output).unwrap();
+        prop_assert!(parsed.is_sequence());
+    }
+
+    #[test]
+    fn image_json_render_one_produces_object(image in arb_image()) {
+        let output = output::render_one(&image, &OutputFormat::Json).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        prop_assert!(parsed.is_object());
+    }
+
+    #[test]
+    fn image_table_list_contains_all_image_ids(images in arb_images()) {
+        let output = output::render_list(&images, &OutputFormat::Table).unwrap();
+        for image in &images {
+            prop_assert!(
+                output.contains(&image.image_id),
+                "missing image_id: {}",
+                image.image_id
+            );
+        }
+    }
+
+    #[test]
+    fn image_table_detail_contains_image_id(image in arb_image()) {
+        let output = output::render_one(&image, &OutputFormat::Table).unwrap();
+        prop_assert!(output.contains(&image.image_id));
+    }
+}
+
+#[test]
+fn image_table_empty_list_has_headers_only() {
+    let output = output::render_list::<Image>(&[], &OutputFormat::Table).unwrap();
+    assert!(output.contains("IMAGE ID"));
+    assert!(output.contains("NAME"));
+    assert!(output.contains("ENABLED"));
+    assert!(!output.contains("Ubuntu"));
 }

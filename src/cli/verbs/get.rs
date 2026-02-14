@@ -17,4 +17,10 @@ pub enum GetResource {
         #[arg(long)]
         status: Option<String>,
     },
+    /// List available workspace images
+    #[command(alias = "image")]
+    Images {
+        /// Image ID to get details for a specific image
+        id: Option<String>,
+    },
 }

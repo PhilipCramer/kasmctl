@@ -289,6 +289,78 @@ async fn url_construction_with_trailing_slash() {
     mock.assert_async().await;
 }
 
+// ===================== get_images =====================
+
+#[tokio::test]
+async fn get_images_success() {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("POST", "/api/public/get_images")
+        .with_status(200)
+        .with_body(
+            r#"{"images":[
+                {"image_id":"img-001","friendly_name":"Ubuntu","enabled":true,"cores":2.0,"memory":2147483648},
+                {"image_id":"img-002","friendly_name":"Kali Linux","enabled":false}
+            ]}"#,
+        )
+        .create_async()
+        .await;
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let images = client.get_images().await.unwrap();
+
+    assert_eq!(images.len(), 2);
+    assert_eq!(images[0].image_id, "img-001");
+    assert_eq!(images[0].friendly_name.as_deref(), Some("Ubuntu"));
+    assert_eq!(images[0].enabled, Some(true));
+    assert_eq!(images[1].image_id, "img-002");
+    assert_eq!(images[1].enabled, Some(false));
+
+    mock.assert_async().await;
+}
+
+#[tokio::test]
+async fn get_images_empty_list() {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("POST", "/api/public/get_images")
+        .with_status(200)
+        .with_body(r#"{"images":[]}"#)
+        .create_async()
+        .await;
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let images = client.get_images().await.unwrap();
+
+    assert!(images.is_empty());
+
+    mock.assert_async().await;
+}
+
+#[tokio::test]
+async fn get_images_injects_auth_credentials() {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("POST", "/api/public/get_images")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"api_key":"test-key","api_key_secret":"test-secret"}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{"images":[]}"#)
+        .create_async()
+        .await;
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    client.get_images().await.unwrap();
+
+    mock.assert_async().await;
+}
+
+// --- URL construction ---
+
 #[tokio::test]
 async fn url_construction_without_trailing_slash() {
     let mut server = mockito::Server::new_async().await;
