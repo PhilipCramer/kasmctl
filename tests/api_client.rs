@@ -359,6 +359,72 @@ async fn get_images_injects_auth_credentials() {
     mock.assert_async().await;
 }
 
+// --- stop_kasm ---
+
+#[tokio::test]
+async fn stop_kasm_success() {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("POST", "/api/stop_kasm")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"kasm_id":"abc-123"}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{}"#)
+        .create_async()
+        .await;
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    client.stop_kasm("abc-123").await.unwrap();
+
+    mock.assert_async().await;
+}
+
+// --- pause_kasm ---
+
+#[tokio::test]
+async fn pause_kasm_success() {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("POST", "/api/pause_kasm")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"kasm_id":"abc-123"}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{}"#)
+        .create_async()
+        .await;
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    client.pause_kasm("abc-123").await.unwrap();
+
+    mock.assert_async().await;
+}
+
+// --- resume_kasm ---
+
+#[tokio::test]
+async fn resume_kasm_success() {
+    let mut server = mockito::Server::new_async().await;
+    let mock = server
+        .mock("POST", "/api/resume_kasm")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"kasm_id":"abc-123"}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{}"#)
+        .create_async()
+        .await;
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    client.resume_kasm("abc-123").await.unwrap();
+
+    mock.assert_async().await;
+}
+
 // --- URL construction ---
 
 #[tokio::test]

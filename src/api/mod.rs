@@ -37,8 +37,26 @@ impl KasmClient {
         })
     }
 
-    /// POST to a Kasm API endpoint with auth credentials injected into the body.
+    /// POST to a Kasm API endpoint under `/api/public/`.
     pub(crate) async fn post<Req, Resp>(&self, endpoint: &str, body: &Req) -> Result<Resp>
+    where
+        Req: Serialize,
+        Resp: for<'de> Deserialize<'de>,
+    {
+        self.post_raw(&format!("public/{endpoint}"), body).await
+    }
+
+    /// POST to a Kasm API endpoint under `/api/` (non-public / internal).
+    pub(crate) async fn post_internal<Req, Resp>(&self, endpoint: &str, body: &Req) -> Result<Resp>
+    where
+        Req: Serialize,
+        Resp: for<'de> Deserialize<'de>,
+    {
+        self.post_raw(endpoint, body).await
+    }
+
+    /// Core POST helper — `path` is appended to `/api/` (e.g. `"public/get_kasms"` or `"stop_kasm"`).
+    pub(crate) async fn post_raw<Req, Resp>(&self, path: &str, body: &Req) -> Result<Resp>
     where
         Req: Serialize,
         Resp: for<'de> Deserialize<'de>,
@@ -50,7 +68,7 @@ impl KasmClient {
         obj.insert("api_key".into(), self.api_key.clone().into());
         obj.insert("api_key_secret".into(), self.api_secret.clone().into());
 
-        let url = format!("{}/api/public/{}", self.base_url, endpoint);
+        let url = format!("{}/api/{}", self.base_url, path);
         let response = self
             .http
             .post(&url)

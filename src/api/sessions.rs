@@ -61,4 +61,43 @@ impl KasmClient {
         let _: Resp = self.post("destroy_kasm", &Req { kasm_id }).await?;
         Ok(())
     }
+
+    pub async fn stop_kasm(&self, kasm_id: &str) -> Result<()> {
+        #[derive(Serialize)]
+        struct Req<'a> {
+            kasm_id: &'a str,
+        }
+
+        #[derive(Deserialize)]
+        struct Resp {}
+
+        let _: Resp = self.post_internal("stop_kasm", &Req { kasm_id }).await?;
+        Ok(())
+    }
+
+    pub async fn pause_kasm(&self, kasm_id: &str) -> Result<()> {
+        #[derive(Serialize)]
+        struct Req<'a> {
+            kasm_id: &'a str,
+        }
+
+        #[derive(Deserialize)]
+        struct Resp {}
+
+        let _: Resp = self.post_internal("pause_kasm", &Req { kasm_id }).await?;
+        Ok(())
+    }
+
+    pub async fn resume_kasm(&self, kasm_id: &str) -> Result<()> {
+        #[derive(Serialize)]
+        struct Req<'a> {
+            kasm_id: &'a str,
+        }
+
+        #[derive(Deserialize)]
+        struct Resp {}
+
+        let _: Resp = self.post_internal("resume_kasm", &Req { kasm_id }).await?;
+        Ok(())
+    }
 }
