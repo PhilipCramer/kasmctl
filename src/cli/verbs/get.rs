@@ -13,5 +13,8 @@ pub enum GetResource {
     Sessions {
         /// Session ID to get a specific session
         id: Option<String>,
+        /// Filter sessions by status (case-insensitive)
+        #[arg(long)]
+        status: Option<String>,
     },
 }

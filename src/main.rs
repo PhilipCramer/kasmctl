@@ -39,14 +39,28 @@ async fn handle_get(
     format: &OutputFormat,
 ) -> Result<()> {
     match resource {
-        GetResource::Sessions { id: None } => {
-            let sessions = client
+        GetResource::Sessions {
+            id: None,
+            status: filter,
+        } => {
+            let mut sessions = client
                 .get_kasms()
                 .await
                 .context("failed to list sessions")?;
+            if let Some(ref status) = filter {
+                let status_lower = status.to_lowercase();
+                sessions.retain(|s| {
+                    s.status
+                        .as_ref()
+                        .is_some_and(|v| v.to_lowercase() == status_lower)
+                });
+            }
             println!("{}", output::render_list(&sessions, format)?);
         }
-        GetResource::Sessions { id: Some(id) } => {
+        GetResource::Sessions {
+            id: Some(id),
+            status: _,
+        } => {
             let session = client
                 .get_kasm_status(&id)
                 .await
