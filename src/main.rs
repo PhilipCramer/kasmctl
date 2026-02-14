@@ -57,6 +57,7 @@ async fn handle_get(
             println!("{}", output::render_one(&session, format)?);
         }
         GetResource::Sessions { filters } => {
+            filters.validate().map_err(|e| anyhow::anyhow!(e))?;
             let mut sessions = client
                 .get_kasms()
                 .await
@@ -137,6 +138,7 @@ async fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> 
             println!("Session {id} stopped.");
         }
         StopResource::Sessions { filters, yes } => {
+            filters.validate().map_err(|e| anyhow::anyhow!(e))?;
             let mut sessions = client
                 .get_kasms()
                 .await
@@ -206,6 +208,7 @@ async fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()
             println!("Session {id} paused.");
         }
         PauseResource::Sessions { filters, yes } => {
+            filters.validate().map_err(|e| anyhow::anyhow!(e))?;
             let mut sessions = client
                 .get_kasms()
                 .await
@@ -275,6 +278,7 @@ async fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<
             println!("Session {id} resumed.");
         }
         ResumeResource::Sessions { filters, yes } => {
+            filters.validate().map_err(|e| anyhow::anyhow!(e))?;
             let mut sessions = client
                 .get_kasms()
                 .await
