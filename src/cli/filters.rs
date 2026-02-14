@@ -53,6 +53,14 @@ impl SessionFilters {
             && self.idle_for.is_none()
     }
 
+    /// Validate filter inputs before making any API calls.
+    pub fn validate(&self) -> Result<(), String> {
+        if let Some(ref dur) = self.idle_for {
+            parse_duration(dur)?;
+        }
+        Ok(())
+    }
+
     /// Apply all filters to a list of sessions, removing non-matching entries.
     pub fn apply(&self, sessions: &mut Vec<Session>) {
         let idle_threshold = self.idle_for.as_ref().map(|dur| {
@@ -418,6 +426,41 @@ mod tests {
         ];
         filters.apply(&mut sessions);
         assert_eq!(sessions.len(), 3);
+    }
+
+    #[test]
+    fn parse_duration_rejects_invalid_unit() {
+        assert!(parse_duration("30s").is_err());
+    }
+
+    #[test]
+    fn parse_duration_rejects_mixed_invalid() {
+        assert!(parse_duration("1h30x").is_err());
+    }
+
+    // --- validate() tests ---
+
+    #[test]
+    fn validate_returns_error_on_invalid_idle_for() {
+        let filters = SessionFilters {
+            idle_for: Some("30s".into()),
+            ..Default::default()
+        };
+        assert!(filters.validate().is_err());
+    }
+
+    #[test]
+    fn validate_succeeds_with_valid_idle_for() {
+        let filters = SessionFilters {
+            idle_for: Some("1h30m".into()),
+            ..Default::default()
+        };
+        assert!(filters.validate().is_ok());
+    }
+
+    #[test]
+    fn validate_succeeds_when_no_filters() {
+        assert!(SessionFilters::default().validate().is_ok());
     }
 
     // --- is_empty() tests ---
