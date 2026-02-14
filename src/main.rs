@@ -22,8 +22,11 @@ async fn main() -> Result<()> {
     match cli.command {
         Command::Config(args) => handle_config(args.command),
         cmd => {
-            let ctx =
-                kasmctl::config::resolve_context(cli.server.as_deref(), cli.context.as_deref())?;
+            let ctx = kasmctl::config::resolve_context(
+                cli.server.as_deref(),
+                cli.context.as_deref(),
+                cli.insecure,
+            )?;
             let client = KasmClient::new(&ctx)?;
 
             match cmd {

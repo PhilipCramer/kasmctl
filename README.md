@@ -96,6 +96,7 @@ kasmctl [OPTIONS] <COMMAND>
 | `-o, --output <FORMAT>` | Output format: `table`, `json`, `yaml` (default: `table`) |
 | `--context <NAME>` | Override the active context |
 | `--server <URL>` | Override server URL (requires `KASMCTL_API_KEY` and `KASMCTL_API_SECRET` env vars) |
+| `--insecure` | Skip TLS certificate verification (for self-signed certificates) |
 
 ### Commands
 
@@ -105,7 +106,7 @@ kasmctl [OPTIONS] <COMMAND>
 | `get sessions [--status <STATUS>]` | List all sessions, optionally filtered by status |
 | `get image <ID>` | Get details for a specific image |
 | `get images` | List all available workspace images |
-| `create session --image <ID>` | Create a new session from a workspace image |
+| `create session --image <ID> [--user <ID>]` | Create a new session from a workspace image |
 | `delete session <ID>` | Delete a session |
 | `stop session <ID>` | Stop a session (frees memory/CPU, keeps disk) |
 | `pause session <ID>` | Pause a session (retains memory, stops CPU) |
@@ -113,6 +114,17 @@ kasmctl [OPTIONS] <COMMAND>
 | `config set-context <NAME>` | Add or update a context |
 | `config use-context <NAME>` | Switch the active context |
 | `config get-contexts` | List all configured contexts |
+
+### Resource aliases
+
+Session resources accept `kasm` (singular) and `kasms` (plural) as aliases:
+
+```sh
+kasmctl get kasm <ID>        # same as: get session <ID>
+kasmctl get kasms             # same as: get sessions
+kasmctl stop kasm <ID>        # same as: stop session <ID>
+kasmctl delete kasm <ID>      # same as: delete session <ID>
+```
 
 ## Configuration
 
@@ -124,16 +136,14 @@ Contexts store server URL and API credentials, allowing you to quickly switch be
 current-context: production
 contexts:
   - name: production
-    context:
-      server: https://kasm.example.com
-      api_key: <key>
-      api_secret: <secret>
+    server: https://kasm.example.com
+    api-key: <key>
+    api-secret: <secret>
   - name: dev
-    context:
-      server: https://kasm-dev.example.com
-      api_key: <key>
-      api_secret: <secret>
-      insecure: true
+    server: https://kasm-dev.example.com
+    api-key: <key>
+    api-secret: <secret>
+    insecure-skip-tls-verify: true
 ```
 
 ## License
