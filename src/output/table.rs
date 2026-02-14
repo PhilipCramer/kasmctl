@@ -14,5 +14,11 @@ pub fn render_list<R: Resource>(items: &[R]) -> Result<String> {
 }
 
 pub fn render_one<R: Resource>(item: &R) -> Result<String> {
-    render_list(std::slice::from_ref(item))
+    let mut table = Table::new();
+    table.load_preset(UTF8_FULL_CONDENSED);
+    table.set_header(vec!["FIELD", "VALUE"]);
+    for (key, value) in item.table_detail() {
+        table.add_row(vec![key, &value]);
+    }
+    Ok(table.to_string())
 }

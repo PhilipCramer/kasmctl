@@ -41,6 +41,20 @@ impl Resource for Session {
             self.created_date.clone().unwrap_or_default(),
         ]
     }
+
+    fn table_detail(&self) -> Vec<(&'static str, String)> {
+        vec![
+            ("KASM ID", self.kasm_id.clone()),
+            ("STATUS", self.status.clone().unwrap_or_default()),
+            ("IMAGE ID", self.image_id.clone().unwrap_or_default()),
+            ("USERNAME", self.username.clone().unwrap_or_default()),
+            ("USER ID", self.user_id.clone().unwrap_or_default()),
+            ("SHARE ID", self.share_id.clone().unwrap_or_default()),
+            ("KASM URL", self.kasm_url.clone().unwrap_or_default()),
+            ("CREATED", self.created_date.clone().unwrap_or_default()),
+            ("EXPIRES", self.expiration_date.clone().unwrap_or_default()),
+        ]
+    }
 }
 
 /// Response from the `request_kasm` endpoint.
