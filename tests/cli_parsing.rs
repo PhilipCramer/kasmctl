@@ -69,26 +69,30 @@ fn parse_get_sessions_status_value_is_captured() {
 
 #[test]
 fn parse_get_session_singular_alias() {
-    let cli = Cli::try_parse_from(["kasmctl", "get", "session", "abc-123"]).unwrap();
+    let cli =
+        Cli::try_parse_from(["kasmctl", "get", "session", "abc-123", "--user", "user-1"]).unwrap();
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Session { id } = args.resource else {
+    let GetResource::Session { id, user } = args.resource else {
         panic!("expected Session resource");
     };
     assert_eq!(id, "abc-123");
+    assert_eq!(user, "user-1");
 }
 
 #[test]
 fn parse_get_kasm_alias() {
-    let cli = Cli::try_parse_from(["kasmctl", "get", "kasm", "abc-123"]).unwrap();
+    let cli =
+        Cli::try_parse_from(["kasmctl", "get", "kasm", "abc-123", "--user", "user-1"]).unwrap();
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Session { id } = args.resource else {
+    let GetResource::Session { id, user } = args.resource else {
         panic!("expected Session resource");
     };
     assert_eq!(id, "abc-123");
+    assert_eq!(user, "user-1");
 }
 
 #[test]
