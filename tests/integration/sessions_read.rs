@@ -1,6 +1,6 @@
 use kasmctl::api::KasmClient;
 
-use super::helpers::{require_integration_env, TEST_USER_ID};
+use super::helpers::{NONEXISTENT_UUID, TEST_USER_ID, require_integration_env};
 
 #[tokio::test]
 async fn get_kasms_succeeds() {
@@ -23,9 +23,7 @@ async fn get_kasm_status_nonexistent_id_returns_error() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let result = client
-        .get_kasm_status("00000000-0000-0000-0000-000000000000", TEST_USER_ID)
-        .await;
+    let result = client.get_kasm_status(NONEXISTENT_UUID, TEST_USER_ID).await;
 
     assert!(
         result.is_err(),

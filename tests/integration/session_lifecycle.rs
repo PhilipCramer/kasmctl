@@ -1,7 +1,8 @@
 use kasmctl::api::KasmClient;
 
 use super::helpers::{
-    discover_image_id, require_integration_env, try_create_session, wait_for_status,
+    NONEXISTENT_UUID, discover_image_id, require_integration_env, try_create_session,
+    wait_for_status,
 };
 
 /// Lifecycle: create → wait running → verify status → destroy.
@@ -81,9 +82,7 @@ async fn destroy_nonexistent_session_returns_error() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let result = client
-        .destroy_kasm("00000000-0000-0000-0000-000000000000")
-        .await;
+    let result = client.destroy_kasm(NONEXISTENT_UUID).await;
 
     assert!(
         result.is_err(),
