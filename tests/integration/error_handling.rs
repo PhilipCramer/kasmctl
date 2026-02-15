@@ -1,12 +1,7 @@
 use kasmctl::api::KasmClient;
 use kasmctl::config::model::Context;
 
-use super::helpers::require_integration_env;
-
-/// Well-formed UUID that does not correspond to any real session.
-/// Using a valid UUID format avoids PostgreSQL `InvalidTextRepresentation`
-/// errors on the server (the `kasm_id` column is a UUID type).
-const NONEXISTENT_KASM_ID: &str = "00000000-0000-0000-0000-000000000000";
+use super::helpers::{NONEXISTENT_UUID, require_integration_env};
 
 /// Requests with invalid API credentials should fail with an error.
 #[tokio::test]
@@ -55,7 +50,7 @@ async fn stop_nonexistent_session_returns_error() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let result = client.stop_kasm(NONEXISTENT_KASM_ID).await;
+    let result = client.stop_kasm(NONEXISTENT_UUID).await;
 
     assert!(
         result.is_err(),
@@ -69,7 +64,7 @@ async fn pause_nonexistent_session_returns_error() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let result = client.pause_kasm(NONEXISTENT_KASM_ID).await;
+    let result = client.pause_kasm(NONEXISTENT_UUID).await;
 
     assert!(
         result.is_err(),
@@ -83,7 +78,7 @@ async fn resume_nonexistent_session_returns_error() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let result = client.resume_kasm(NONEXISTENT_KASM_ID).await;
+    let result = client.resume_kasm(NONEXISTENT_UUID).await;
 
     assert!(
         result.is_err(),

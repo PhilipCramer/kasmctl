@@ -42,6 +42,13 @@ pub(crate) use require_integration_env;
 /// them as anonymous and subsequent operations (destroy, stop, etc.) fail.
 pub const TEST_USER_ID: &str = "b3aacd1f-bc7b-4912-a6f9-95e891d7a345";
 
+/// Well-formed UUID that does not correspond to any real resource.
+///
+/// The Kasm database uses UUID columns, so passing non-UUID strings (e.g.
+/// `"nonexistent-id"`) causes server-side PostgreSQL `InvalidTextRepresentation`
+/// errors. Always use this constant for "nonexistent resource" tests.
+pub const NONEXISTENT_UUID: &str = "00000000-0000-0000-0000-000000000000";
+
 /// Transient server errors that should cause a test to skip rather than fail.
 const SKIP_PATTERNS: &[&str] = &[
     "No resources are available",
@@ -89,9 +96,7 @@ pub async fn wait_for_status(client: &KasmClient, kasm_id: &str, target: &str) -
     let interval = Duration::from_secs(3);
 
     loop {
-        let session = client
-            .get_kasm_status(kasm_id, TEST_USER_ID)
-            .await?;
+        let session = client.get_kasm_status(kasm_id, TEST_USER_ID).await?;
         if session.operational_status.as_deref() == Some(target) {
             return Ok(session);
         }
