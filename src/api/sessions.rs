@@ -19,10 +19,11 @@ impl KasmClient {
         Ok(resp.kasms)
     }
 
-    pub async fn get_kasm_status(&self, kasm_id: &str) -> Result<Session> {
+    pub async fn get_kasm_status(&self, kasm_id: &str, user_id: &str) -> Result<Session> {
         #[derive(Serialize)]
         struct Req<'a> {
             kasm_id: &'a str,
+            user_id: &'a str,
         }
 
         #[derive(Deserialize)]
@@ -30,7 +31,9 @@ impl KasmClient {
             kasm: Session,
         }
 
-        let resp: Resp = self.post("get_kasm_status", &Req { kasm_id }).await?;
+        let resp: Resp = self
+            .post("get_kasm_status", &Req { kasm_id, user_id })
+            .await?;
         Ok(resp.kasm)
     }
 

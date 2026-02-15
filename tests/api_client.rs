@@ -87,7 +87,7 @@ async fn get_kasm_status_success() {
     let mock = server
         .mock("POST", "/api/public/get_kasm_status")
         .match_body(mockito::Matcher::PartialJsonString(
-            r#"{"kasm_id":"abc-123"}"#.into(),
+            r#"{"kasm_id":"abc-123","user_id":"user-456"}"#.into(),
         ))
         .with_status(200)
         .with_body(r#"{"kasm":{"kasm_id":"abc-123","operational_status":"running"}}"#)
@@ -96,7 +96,7 @@ async fn get_kasm_status_success() {
 
     let ctx = test_context(&server.url());
     let client = KasmClient::new(&ctx).unwrap();
-    let session = client.get_kasm_status("abc-123").await.unwrap();
+    let session = client.get_kasm_status("abc-123", "user-456").await.unwrap();
 
     assert_eq!(session.kasm_id, "abc-123");
     assert_eq!(session.operational_status.as_deref(), Some("running"));

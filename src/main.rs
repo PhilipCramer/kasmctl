@@ -49,9 +49,9 @@ async fn handle_get(
     format: &OutputFormat,
 ) -> Result<()> {
     match resource {
-        GetResource::Session { id } => {
+        GetResource::Session { id, user } => {
             let session = client
-                .get_kasm_status(&id)
+                .get_kasm_status(&id, &user)
                 .await
                 .context("failed to get session")?;
             println!("{}", output::render_one(&session, format)?);
