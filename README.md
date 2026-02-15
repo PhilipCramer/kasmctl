@@ -48,7 +48,7 @@ kasmctl get sessions --status running
 ### Get a specific session
 
 ```sh
-kasmctl get session <SESSION_ID>
+kasmctl get session <SESSION_ID> --user <USER_ID>
 ```
 
 ### Create a session
@@ -113,7 +113,7 @@ kasmctl [OPTIONS] <COMMAND>
 
 | Command | Description |
 |---|---|
-| `get session <ID>` | Get details for a specific session |
+| `get session <ID> --user <USER>` | Get details for a specific session |
 | `get sessions [FILTERS]` | List all sessions, optionally filtered |
 | `get image <ID>` | Get details for a specific image |
 | `get images` | List all available workspace images |
@@ -152,7 +152,7 @@ Multiple filters can be combined and are applied with AND logic.
 Session resources accept `kasm` (singular) and `kasms` (plural) as aliases:
 
 ```sh
-kasmctl get kasm <ID>        # same as: get session <ID>
+kasmctl get kasm <ID> --user <USER>  # same as: get session <ID> --user <USER>
 kasmctl get kasms             # same as: get sessions
 kasmctl stop kasm <ID>        # same as: stop session <ID>
 kasmctl stop kasms --status running  # same as: stop sessions --status running
