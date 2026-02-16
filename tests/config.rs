@@ -10,13 +10,15 @@ fn arb_context() -> impl Strategy<Value = Context> {
         "[a-zA-Z0-9]{1,32}",
         "[a-zA-Z0-9]{1,32}",
         any::<bool>(),
+        prop::option::of(1u64..3600),
     )
         .prop_map(
-            |(server, api_key, api_secret, insecure_skip_tls_verify)| Context {
+            |(server, api_key, api_secret, insecure_skip_tls_verify, timeout_seconds)| Context {
                 server,
                 api_key,
                 api_secret,
                 insecure_skip_tls_verify,
+                timeout_seconds,
             },
         )
 }
@@ -172,6 +174,7 @@ fn make_context(name: &str, server: &str) -> NamedContext {
             api_key: format!("{name}-key"),
             api_secret: format!("{name}-secret"),
             insecure_skip_tls_verify: false,
+            timeout_seconds: None,
         },
     }
 }
@@ -238,4 +241,40 @@ fn resolve_from_config_override_not_found() {
     let result = resolve_from_config(&config, Some("nonexistent"));
     assert!(result.is_err());
     assert!(result.unwrap_err().to_string().contains("not found"));
+}
+
+// --- timeout-seconds serde tests ---
+
+#[test]
+fn timeout_seconds_roundtrip() {
+    let ctx = Context {
+        server: "https://example.com".into(),
+        api_key: "key".into(),
+        api_secret: "secret".into(),
+        insecure_skip_tls_verify: false,
+        timeout_seconds: Some(60),
+    };
+    let yaml = serde_yaml::to_string(&ctx).unwrap();
+    assert!(
+        yaml.contains("timeout-seconds: 60"),
+        "expected 'timeout-seconds: 60', got: {yaml}"
+    );
+    let deserialized: Context = serde_yaml::from_str(&yaml).unwrap();
+    assert_eq!(deserialized.timeout_seconds, Some(60));
+}
+
+#[test]
+fn timeout_seconds_omitted_when_none() {
+    let ctx = Context {
+        server: "https://example.com".into(),
+        api_key: "key".into(),
+        api_secret: "secret".into(),
+        insecure_skip_tls_verify: false,
+        timeout_seconds: None,
+    };
+    let yaml = serde_yaml::to_string(&ctx).unwrap();
+    assert!(
+        !yaml.contains("timeout-seconds"),
+        "timeout-seconds should be omitted when None, got: {yaml}"
+    );
 }

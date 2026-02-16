@@ -1,7 +1,7 @@
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
 
 use anyhow::{Result, bail};
-use tokio::time::{Instant, sleep};
 
 use kasmctl::api::KasmClient;
 use kasmctl::config::model::Context;
@@ -59,11 +59,11 @@ const SKIP_PATTERNS: &[&str] = &[
 /// Try to create a session attributed to [`TEST_USER_ID`], returning `None`
 /// (and printing SKIPPED) if the server cannot create a session right now
 /// (capacity, licensing, etc.).
-pub async fn try_create_session(
+pub fn try_create_session(
     client: &KasmClient,
     image_id: &str,
 ) -> Option<kasmctl::models::session::CreateSessionResponse> {
-    match client.request_kasm(image_id, Some(TEST_USER_ID)).await {
+    match client.request_kasm(image_id, Some(TEST_USER_ID)) {
         Ok(resp) => Some(resp),
         Err(e) => {
             let msg = e.to_string();
@@ -78,8 +78,8 @@ pub async fn try_create_session(
 }
 
 /// Find the first enabled image available on the server.
-pub async fn discover_image_id(client: &KasmClient) -> Result<String> {
-    let images = client.get_images().await?;
+pub fn discover_image_id(client: &KasmClient) -> Result<String> {
+    let images = client.get_images()?;
     images
         .into_iter()
         .find(|img| img.enabled == Some(true))
@@ -90,13 +90,13 @@ pub async fn discover_image_id(client: &KasmClient) -> Result<String> {
 /// Poll `get_kasm_status` until `operational_status` matches `target`.
 ///
 /// Checks every 3 seconds with a timeout of 120 seconds.
-pub async fn wait_for_status(client: &KasmClient, kasm_id: &str, target: &str) -> Result<Session> {
+pub fn wait_for_status(client: &KasmClient, kasm_id: &str, target: &str) -> Result<Session> {
     let start = Instant::now();
     let timeout = Duration::from_secs(120);
     let interval = Duration::from_secs(3);
 
     loop {
-        let session = client.get_kasm_status(kasm_id, TEST_USER_ID).await?;
+        let session = client.get_kasm_status(kasm_id, TEST_USER_ID)?;
         if session.operational_status.as_deref() == Some(target) {
             return Ok(session);
         }
@@ -108,6 +108,6 @@ pub async fn wait_for_status(client: &KasmClient, kasm_id: &str, target: &str) -
                 session.operational_status,
             );
         }
-        sleep(interval).await;
+        thread::sleep(interval);
     }
 }

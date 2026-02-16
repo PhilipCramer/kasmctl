@@ -16,8 +16,7 @@ use kasmctl::config::{load_config, save_config};
 use kasmctl::confirm;
 use kasmctl::output::{self, OutputFormat};
 
-#[tokio::main]
-async fn main() -> Result<()> {
+fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
@@ -31,42 +30,34 @@ async fn main() -> Result<()> {
             let client = KasmClient::new(&ctx)?;
 
             match cmd {
-                Command::Get(args) => handle_get(&client, args.resource, &cli.output).await,
-                Command::Create(args) => handle_create(&client, args.resource, &cli.output).await,
-                Command::Delete(args) => handle_delete(&client, args.resource).await,
-                Command::Stop(args) => handle_stop(&client, args.resource).await,
-                Command::Pause(args) => handle_pause(&client, args.resource).await,
-                Command::Resume(args) => handle_resume(&client, args.resource).await,
+                Command::Get(args) => handle_get(&client, args.resource, &cli.output),
+                Command::Create(args) => handle_create(&client, args.resource, &cli.output),
+                Command::Delete(args) => handle_delete(&client, args.resource),
+                Command::Stop(args) => handle_stop(&client, args.resource),
+                Command::Pause(args) => handle_pause(&client, args.resource),
+                Command::Resume(args) => handle_resume(&client, args.resource),
                 Command::Config(_) => unreachable!(),
             }
         }
     }
 }
 
-async fn handle_get(
-    client: &KasmClient,
-    resource: GetResource,
-    format: &OutputFormat,
-) -> Result<()> {
+fn handle_get(client: &KasmClient, resource: GetResource, format: &OutputFormat) -> Result<()> {
     match resource {
         GetResource::Session { id, user } => {
             let session = client
                 .get_kasm_status(&id, &user)
-                .await
                 .context("failed to get session")?;
             println!("{}", output::render_one(&session, format)?);
         }
         GetResource::Sessions { filters } => {
             filters.validate().map_err(|e| anyhow::anyhow!(e))?;
-            let mut sessions = client
-                .get_kasms()
-                .await
-                .context("failed to list sessions")?;
+            let mut sessions = client.get_kasms().context("failed to list sessions")?;
             filters.apply(&mut sessions);
             println!("{}", output::render_list(&sessions, format)?);
         }
         GetResource::Image { id } => {
-            let images = client.get_images().await.context("failed to list images")?;
+            let images = client.get_images().context("failed to list images")?;
             let image = images
                 .into_iter()
                 .find(|img| img.image_id == id)
@@ -74,14 +65,14 @@ async fn handle_get(
             println!("{}", output::render_one(&image, format)?);
         }
         GetResource::Images => {
-            let images = client.get_images().await.context("failed to list images")?;
+            let images = client.get_images().context("failed to list images")?;
             println!("{}", output::render_list(&images, format)?);
         }
     }
     Ok(())
 }
 
-async fn handle_create(
+fn handle_create(
     client: &KasmClient,
     resource: CreateResource,
     format: &OutputFormat,
@@ -90,7 +81,6 @@ async fn handle_create(
         CreateResource::Session { image, user } => {
             let resp = client
                 .request_kasm(&image, user.as_deref())
-                .await
                 .context("failed to create session")?;
 
             match format {
@@ -115,12 +105,11 @@ async fn handle_create(
     Ok(())
 }
 
-async fn handle_delete(client: &KasmClient, resource: DeleteResource) -> Result<()> {
+fn handle_delete(client: &KasmClient, resource: DeleteResource) -> Result<()> {
     match resource {
         DeleteResource::Session { id } => {
             client
                 .destroy_kasm(&id)
-                .await
                 .context("failed to delete session")?;
             println!("Session {id} deleted.");
         }
@@ -128,21 +117,15 @@ async fn handle_delete(client: &KasmClient, resource: DeleteResource) -> Result<
     Ok(())
 }
 
-async fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> {
+fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> {
     match resource {
         StopResource::Session { id } => {
-            client
-                .stop_kasm(&id)
-                .await
-                .context("failed to stop session")?;
+            client.stop_kasm(&id).context("failed to stop session")?;
             println!("Session {id} stopped.");
         }
         StopResource::Sessions { filters, yes } => {
             filters.validate().map_err(|e| anyhow::anyhow!(e))?;
-            let mut sessions = client
-                .get_kasms()
-                .await
-                .context("failed to list sessions")?;
+            let mut sessions = client.get_kasms().context("failed to list sessions")?;
             filters.apply(&mut sessions);
 
             if sessions.is_empty() {
@@ -170,7 +153,7 @@ async fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> 
                     skipped += 1;
                     continue;
                 }
-                match client.stop_kasm(&s.kasm_id).await {
+                match client.stop_kasm(&s.kasm_id) {
                     Ok(()) => eprintln!("  {} ok", s.kasm_id),
                     Err(e) => {
                         eprintln!("  {} FAILED: {e}", s.kasm_id);
@@ -198,21 +181,15 @@ async fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> 
     Ok(())
 }
 
-async fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()> {
+fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()> {
     match resource {
         PauseResource::Session { id } => {
-            client
-                .pause_kasm(&id)
-                .await
-                .context("failed to pause session")?;
+            client.pause_kasm(&id).context("failed to pause session")?;
             println!("Session {id} paused.");
         }
         PauseResource::Sessions { filters, yes } => {
             filters.validate().map_err(|e| anyhow::anyhow!(e))?;
-            let mut sessions = client
-                .get_kasms()
-                .await
-                .context("failed to list sessions")?;
+            let mut sessions = client.get_kasms().context("failed to list sessions")?;
             filters.apply(&mut sessions);
 
             if sessions.is_empty() {
@@ -242,7 +219,7 @@ async fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()
                     skipped += 1;
                     continue;
                 }
-                match client.pause_kasm(&s.kasm_id).await {
+                match client.pause_kasm(&s.kasm_id) {
                     Ok(()) => eprintln!("  {} ok", s.kasm_id),
                     Err(e) => {
                         eprintln!("  {} FAILED: {e}", s.kasm_id);
@@ -270,21 +247,17 @@ async fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()
     Ok(())
 }
 
-async fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<()> {
+fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<()> {
     match resource {
         ResumeResource::Session { id } => {
             client
                 .resume_kasm(&id)
-                .await
                 .context("failed to resume session")?;
             println!("Session {id} resumed.");
         }
         ResumeResource::Sessions { filters, yes } => {
             filters.validate().map_err(|e| anyhow::anyhow!(e))?;
-            let mut sessions = client
-                .get_kasms()
-                .await
-                .context("failed to list sessions")?;
+            let mut sessions = client.get_kasms().context("failed to list sessions")?;
             filters.apply(&mut sessions);
 
             if sessions.is_empty() {
@@ -312,7 +285,7 @@ async fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<
                     skipped += 1;
                     continue;
                 }
-                match client.resume_kasm(&s.kasm_id).await {
+                match client.resume_kasm(&s.kasm_id) {
                     Ok(()) => eprintln!("  {} ok", s.kasm_id),
                     Err(e) => {
                         eprintln!("  {} FAILED: {e}", s.kasm_id);
@@ -358,6 +331,7 @@ fn handle_config(command: ConfigCommand) -> Result<()> {
                     api_key,
                     api_secret,
                     insecure_skip_tls_verify: insecure,
+                    timeout_seconds: None,
                 };
             } else {
                 config.contexts.push(NamedContext {
@@ -367,6 +341,7 @@ fn handle_config(command: ConfigCommand) -> Result<()> {
                         api_key,
                         api_secret,
                         insecure_skip_tls_verify: insecure,
+                        timeout_seconds: None,
                     },
                 });
             }

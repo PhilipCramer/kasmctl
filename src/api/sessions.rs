@@ -6,7 +6,7 @@ use crate::models::session::{CreateSessionResponse, Session};
 use super::KasmClient;
 
 impl KasmClient {
-    pub async fn get_kasms(&self) -> Result<Vec<Session>> {
+    pub fn get_kasms(&self) -> Result<Vec<Session>> {
         #[derive(Serialize)]
         struct Req {}
 
@@ -15,11 +15,11 @@ impl KasmClient {
             kasms: Vec<Session>,
         }
 
-        let resp: Resp = self.post("get_kasms", &Req {}).await?;
+        let resp: Resp = self.post("get_kasms", &Req {})?;
         Ok(resp.kasms)
     }
 
-    pub async fn get_kasm_status(&self, kasm_id: &str, user_id: &str) -> Result<Session> {
+    pub fn get_kasm_status(&self, kasm_id: &str, user_id: &str) -> Result<Session> {
         #[derive(Serialize)]
         struct Req<'a> {
             kasm_id: &'a str,
@@ -31,13 +31,11 @@ impl KasmClient {
             kasm: Session,
         }
 
-        let resp: Resp = self
-            .post("get_kasm_status", &Req { kasm_id, user_id })
-            .await?;
+        let resp: Resp = self.post("get_kasm_status", &Req { kasm_id, user_id })?;
         Ok(resp.kasm)
     }
 
-    pub async fn request_kasm(
+    pub fn request_kasm(
         &self,
         image_id: &str,
         user_id: Option<&str>,
@@ -49,10 +47,10 @@ impl KasmClient {
             user_id: Option<&'a str>,
         }
 
-        self.post("request_kasm", &Req { image_id, user_id }).await
+        self.post("request_kasm", &Req { image_id, user_id })
     }
 
-    pub async fn destroy_kasm(&self, kasm_id: &str) -> Result<()> {
+    pub fn destroy_kasm(&self, kasm_id: &str) -> Result<()> {
         #[derive(Serialize)]
         struct Req<'a> {
             kasm_id: &'a str,
@@ -61,11 +59,11 @@ impl KasmClient {
         #[derive(Deserialize)]
         struct Resp {}
 
-        let _: Resp = self.post("destroy_kasm", &Req { kasm_id }).await?;
+        let _: Resp = self.post("destroy_kasm", &Req { kasm_id })?;
         Ok(())
     }
 
-    pub async fn stop_kasm(&self, kasm_id: &str) -> Result<()> {
+    pub fn stop_kasm(&self, kasm_id: &str) -> Result<()> {
         #[derive(Serialize)]
         struct Req<'a> {
             kasm_id: &'a str,
@@ -74,11 +72,11 @@ impl KasmClient {
         #[derive(Deserialize)]
         struct Resp {}
 
-        let _: Resp = self.post_internal("stop_kasm", &Req { kasm_id }).await?;
+        let _: Resp = self.post_internal("stop_kasm", &Req { kasm_id })?;
         Ok(())
     }
 
-    pub async fn pause_kasm(&self, kasm_id: &str) -> Result<()> {
+    pub fn pause_kasm(&self, kasm_id: &str) -> Result<()> {
         #[derive(Serialize)]
         struct Req<'a> {
             kasm_id: &'a str,
@@ -87,11 +85,11 @@ impl KasmClient {
         #[derive(Deserialize)]
         struct Resp {}
 
-        let _: Resp = self.post_internal("pause_kasm", &Req { kasm_id }).await?;
+        let _: Resp = self.post_internal("pause_kasm", &Req { kasm_id })?;
         Ok(())
     }
 
-    pub async fn resume_kasm(&self, kasm_id: &str) -> Result<()> {
+    pub fn resume_kasm(&self, kasm_id: &str) -> Result<()> {
         #[derive(Serialize)]
         struct Req<'a> {
             kasm_id: &'a str,
@@ -100,7 +98,7 @@ impl KasmClient {
         #[derive(Deserialize)]
         struct Resp {}
 
-        let _: Resp = self.post_internal("resume_kasm", &Req { kasm_id }).await?;
+        let _: Resp = self.post_internal("resume_kasm", &Req { kasm_id })?;
         Ok(())
     }
 }

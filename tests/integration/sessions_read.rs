@@ -2,14 +2,13 @@ use kasmctl::api::KasmClient;
 
 use super::helpers::{NONEXISTENT_UUID, TEST_USER_ID, require_integration_env};
 
-#[tokio::test]
-async fn get_kasms_succeeds() {
+#[test]
+fn get_kasms_succeeds() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
     let sessions = client
         .get_kasms()
-        .await
         .expect("get_kasms should succeed against a live server");
 
     // The session list may be empty — we only assert the call succeeds.
@@ -18,12 +17,12 @@ async fn get_kasms_succeeds() {
 
 /// Use a well-formed UUID that doesn't exist to avoid causing PostgreSQL
 /// `InvalidTextRepresentation` errors on the server.
-#[tokio::test]
-async fn get_kasm_status_nonexistent_id_returns_error() {
+#[test]
+fn get_kasm_status_nonexistent_id_returns_error() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let result = client.get_kasm_status(NONEXISTENT_UUID, TEST_USER_ID).await;
+    let result = client.get_kasm_status(NONEXISTENT_UUID, TEST_USER_ID);
 
     assert!(
         result.is_err(),

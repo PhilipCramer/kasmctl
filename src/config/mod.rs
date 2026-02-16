@@ -81,6 +81,7 @@ pub fn resolve_server_override(
         api_key,
         api_secret,
         insecure_skip_tls_verify: false,
+        timeout_seconds: None,
     })
 }
 
@@ -118,6 +119,7 @@ mod tests {
                 api_key: "key".into(),
                 api_secret: "secret".into(),
                 insecure_skip_tls_verify: false,
+                timeout_seconds: None,
             },
         }
     }

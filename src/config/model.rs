@@ -28,4 +28,10 @@ pub struct Context {
         skip_serializing_if = "std::ops::Not::not"
     )]
     pub insecure_skip_tls_verify: bool,
+    #[serde(
+        default,
+        rename = "timeout-seconds",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub timeout_seconds: Option<u64>,
 }
