@@ -64,8 +64,9 @@ fn handle_get(client: &KasmClient, resource: GetResource, format: &OutputFormat)
                 .ok_or_else(|| anyhow::anyhow!("image {id:?} not found"))?;
             println!("{}", output::render_one(&image, format)?);
         }
-        GetResource::Images => {
-            let images = client.get_images().context("failed to list images")?;
+        GetResource::Images { filters } => {
+            let mut images = client.get_images().context("failed to list images")?;
+            filters.apply(&mut images);
             println!("{}", output::render_list(&images, format)?);
         }
     }

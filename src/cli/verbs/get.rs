@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 
-use crate::cli::filters::SessionFilters;
+use crate::cli::filters::{ImageFilters, SessionFilters};
 
 #[derive(Args)]
 pub struct GetArgs {
@@ -31,5 +31,8 @@ pub enum GetResource {
         id: String,
     },
     /// List all available workspace images
-    Images,
+    Images {
+        #[command(flatten)]
+        filters: ImageFilters,
+    },
 }

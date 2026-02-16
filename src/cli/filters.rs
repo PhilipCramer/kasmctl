@@ -2,6 +2,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use clap::Args;
 
+use crate::models::image::Image;
 use crate::models::session::Session;
 
 /// Shared filter options for bulk session commands.
@@ -125,6 +126,69 @@ impl SessionFilters {
                 && s.keepalive_date
                     .as_ref()
                     .is_none_or(|d| d.as_str() >= threshold.as_str())
+            {
+                return false;
+            }
+
+            true
+        });
+    }
+}
+
+/// Shared filter options for image list commands.
+#[derive(Args, Clone, Debug, Default)]
+pub struct ImageFilters {
+    /// Only show enabled images
+    #[arg(long, conflicts_with = "disabled")]
+    pub enabled: bool,
+
+    /// Only show disabled images
+    #[arg(long, conflicts_with = "enabled")]
+    pub disabled: bool,
+
+    /// Filter by friendly name (case-insensitive substring match)
+    #[arg(long)]
+    pub name: Option<String>,
+
+    /// Filter by image type / source
+    #[arg(long)]
+    pub image_type: Option<String>,
+}
+
+impl ImageFilters {
+    /// Returns true when no filters are set.
+    pub fn is_empty(&self) -> bool {
+        !self.enabled && !self.disabled && self.name.is_none() && self.image_type.is_none()
+    }
+
+    /// Apply all filters to a list of images, removing non-matching entries.
+    pub fn apply(&self, images: &mut Vec<Image>) {
+        let name_lower = self.name.as_ref().map(|n| n.to_lowercase());
+        let type_lower = self.image_type.as_ref().map(|t| t.to_lowercase());
+
+        images.retain(|img| {
+            if self.enabled && img.enabled != Some(true) {
+                return false;
+            }
+
+            if self.disabled && img.enabled != Some(false) {
+                return false;
+            }
+
+            if let Some(ref pattern) = name_lower
+                && img
+                    .friendly_name
+                    .as_ref()
+                    .is_none_or(|n| !n.to_lowercase().contains(pattern.as_str()))
+            {
+                return false;
+            }
+
+            if let Some(ref expected_type) = type_lower
+                && img
+                    .image_src
+                    .as_ref()
+                    .is_none_or(|s| s.to_lowercase() != *expected_type)
             {
                 return false;
             }
@@ -535,5 +599,198 @@ mod tests {
             }
             .is_empty()
         );
+    }
+
+    // --- ImageFilters apply() tests ---
+
+    fn make_image(overrides: impl FnOnce(&mut Image)) -> Image {
+        let mut img = Image {
+            image_id: "img-1".into(),
+            friendly_name: Some("Ubuntu 22.04".into()),
+            name: Some("kasmweb/ubuntu-jammy:1.15".into()),
+            description: Some("Ubuntu desktop".into()),
+            enabled: Some(true),
+            cores: Some(2.0),
+            memory: Some(2_147_483_648),
+            image_src: Some("Container".into()),
+        };
+        overrides(&mut img);
+        img
+    }
+
+    #[test]
+    fn image_filter_by_enabled() {
+        let filters = ImageFilters {
+            enabled: true,
+            ..Default::default()
+        };
+        let mut images = vec![
+            make_image(|i| i.enabled = Some(true)),
+            make_image(|i| i.enabled = Some(false)),
+        ];
+        filters.apply(&mut images);
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].enabled, Some(true));
+    }
+
+    #[test]
+    fn image_filter_by_disabled() {
+        let filters = ImageFilters {
+            disabled: true,
+            ..Default::default()
+        };
+        let mut images = vec![
+            make_image(|i| i.enabled = Some(true)),
+            make_image(|i| i.enabled = Some(false)),
+        ];
+        filters.apply(&mut images);
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].enabled, Some(false));
+    }
+
+    #[test]
+    fn image_filter_enabled_excludes_none() {
+        let filters = ImageFilters {
+            enabled: true,
+            ..Default::default()
+        };
+        let mut images = vec![
+            make_image(|i| i.enabled = Some(true)),
+            make_image(|i| i.enabled = None),
+        ];
+        filters.apply(&mut images);
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].enabled, Some(true));
+    }
+
+    #[test]
+    fn image_filter_by_name_case_insensitive() {
+        let filters = ImageFilters {
+            name: Some("Ubuntu".into()),
+            ..Default::default()
+        };
+        let mut images = vec![
+            make_image(|i| i.friendly_name = Some("ubuntu 22.04".into())),
+            make_image(|i| i.friendly_name = Some("Fedora 39".into())),
+        ];
+        filters.apply(&mut images);
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].friendly_name.as_deref(), Some("ubuntu 22.04"));
+    }
+
+    #[test]
+    fn image_filter_by_name_substring() {
+        let filters = ImageFilters {
+            name: Some("buntu".into()),
+            ..Default::default()
+        };
+        let mut images = vec![
+            make_image(|i| i.friendly_name = Some("Ubuntu 22.04".into())),
+            make_image(|i| i.friendly_name = Some("Fedora 39".into())),
+        ];
+        filters.apply(&mut images);
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].friendly_name.as_deref(), Some("Ubuntu 22.04"));
+    }
+
+    #[test]
+    fn image_filter_by_name_no_match() {
+        let filters = ImageFilters {
+            name: Some("fedora".into()),
+            ..Default::default()
+        };
+        let mut images = vec![make_image(|i| {
+            i.friendly_name = Some("Ubuntu 22.04".into())
+        })];
+        filters.apply(&mut images);
+        assert_eq!(images.len(), 0);
+    }
+
+    #[test]
+    fn image_filter_by_name_excludes_none_friendly_name() {
+        let filters = ImageFilters {
+            name: Some("ubuntu".into()),
+            ..Default::default()
+        };
+        let mut images = vec![
+            make_image(|i| i.friendly_name = Some("Ubuntu 22.04".into())),
+            make_image(|i| i.friendly_name = None),
+        ];
+        filters.apply(&mut images);
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].friendly_name.as_deref(), Some("Ubuntu 22.04"));
+    }
+
+    #[test]
+    fn image_filter_by_image_type_case_insensitive() {
+        let filters = ImageFilters {
+            image_type: Some("container".into()),
+            ..Default::default()
+        };
+        let mut images = vec![
+            make_image(|i| i.image_src = Some("Container".into())),
+            make_image(|i| i.image_src = Some("Server".into())),
+        ];
+        filters.apply(&mut images);
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].image_src.as_deref(), Some("Container"));
+    }
+
+    #[test]
+    fn image_filter_by_image_type_exact_not_substring() {
+        let filters = ImageFilters {
+            image_type: Some("contain".into()),
+            ..Default::default()
+        };
+        let mut images = vec![make_image(|i| i.image_src = Some("Container".into()))];
+        filters.apply(&mut images);
+        assert_eq!(images.len(), 0);
+    }
+
+    #[test]
+    fn image_filter_combined() {
+        let filters = ImageFilters {
+            enabled: true,
+            name: Some("ubuntu".into()),
+            image_type: Some("Container".into()),
+            ..Default::default()
+        };
+        let mut images = vec![
+            // matches all filters
+            make_image(|i| {
+                i.enabled = Some(true);
+                i.friendly_name = Some("Ubuntu 22.04".into());
+                i.image_src = Some("Container".into());
+            }),
+            // wrong enabled
+            make_image(|i| {
+                i.enabled = Some(false);
+                i.friendly_name = Some("Ubuntu 20.04".into());
+                i.image_src = Some("Container".into());
+            }),
+            // wrong name
+            make_image(|i| {
+                i.enabled = Some(true);
+                i.friendly_name = Some("Fedora 39".into());
+                i.image_src = Some("Container".into());
+            }),
+            // wrong type
+            make_image(|i| {
+                i.enabled = Some(true);
+                i.friendly_name = Some("Ubuntu 24.04".into());
+                i.image_src = Some("Server".into());
+            }),
+        ];
+        filters.apply(&mut images);
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].friendly_name.as_deref(), Some("Ubuntu 22.04"));
+    }
+
+    #[test]
+    fn image_filter_no_filters_retains_all() {
+        let filters = ImageFilters::default();
+        let mut images = vec![make_image(|_| {}), make_image(|_| {}), make_image(|_| {})];
+        filters.apply(&mut images);
+        assert_eq!(images.len(), 3);
     }
 }
