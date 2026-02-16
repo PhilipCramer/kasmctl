@@ -15,7 +15,7 @@ impl KasmClient {
             kasms: Vec<Session>,
         }
 
-        let resp: Resp = self.post("get_kasms", &Req {})?;
+        let resp: Resp = self.post("public/get_kasms", &Req {})?;
         Ok(resp.kasms)
     }
 
@@ -31,7 +31,7 @@ impl KasmClient {
             kasm: Session,
         }
 
-        let resp: Resp = self.post("get_kasm_status", &Req { kasm_id, user_id })?;
+        let resp: Resp = self.post("public/get_kasm_status", &Req { kasm_id, user_id })?;
         Ok(resp.kasm)
     }
 
@@ -47,7 +47,7 @@ impl KasmClient {
             user_id: Option<&'a str>,
         }
 
-        self.post("request_kasm", &Req { image_id, user_id })
+        self.post("public/request_kasm", &Req { image_id, user_id })
     }
 
     pub fn destroy_kasm(&self, kasm_id: &str) -> Result<()> {
@@ -59,7 +59,7 @@ impl KasmClient {
         #[derive(Deserialize)]
         struct Resp {}
 
-        let _: Resp = self.post("destroy_kasm", &Req { kasm_id })?;
+        let _: Resp = self.post("public/destroy_kasm", &Req { kasm_id })?;
         Ok(())
     }
 
@@ -72,7 +72,7 @@ impl KasmClient {
         #[derive(Deserialize)]
         struct Resp {}
 
-        let _: Resp = self.post_internal("stop_kasm", &Req { kasm_id })?;
+        let _: Resp = self.post("stop_kasm", &Req { kasm_id })?;
         Ok(())
     }
 
@@ -85,7 +85,7 @@ impl KasmClient {
         #[derive(Deserialize)]
         struct Resp {}
 
-        let _: Resp = self.post_internal("pause_kasm", &Req { kasm_id })?;
+        let _: Resp = self.post("pause_kasm", &Req { kasm_id })?;
         Ok(())
     }
 
@@ -98,7 +98,7 @@ impl KasmClient {
         #[derive(Deserialize)]
         struct Resp {}
 
-        let _: Resp = self.post_internal("resume_kasm", &Req { kasm_id })?;
+        let _: Resp = self.post("resume_kasm", &Req { kasm_id })?;
         Ok(())
     }
 }

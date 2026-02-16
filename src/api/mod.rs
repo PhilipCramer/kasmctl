@@ -50,35 +50,8 @@ impl KasmClient {
         })
     }
 
-    /// POST to a Kasm API endpoint under `/api/public/`.
-    pub(crate) fn post<Req, Resp>(&self, endpoint: &str, body: &Req) -> Result<Resp>
-    where
-        Req: Serialize,
-        Resp: for<'de> Deserialize<'de>,
-    {
-        self.post_raw(&format!("public/{endpoint}"), body)
-    }
-
-    /// POST to a Kasm API endpoint under `/api/` (non-public / internal).
-    pub(crate) fn post_internal<Req, Resp>(&self, endpoint: &str, body: &Req) -> Result<Resp>
-    where
-        Req: Serialize,
-        Resp: for<'de> Deserialize<'de>,
-    {
-        self.post_raw(endpoint, body)
-    }
-
-    /// POST to a Kasm API endpoint under `/api/admin/`.
-    pub(crate) fn post_admin<Req, Resp>(&self, endpoint: &str, body: &Req) -> Result<Resp>
-    where
-        Req: Serialize,
-        Resp: for<'de> Deserialize<'de>,
-    {
-        self.post_raw(&format!("admin/{endpoint}"), body)
-    }
-
     /// Core POST helper — `path` is appended to `/api/` (e.g. `"public/get_kasms"` or `"stop_kasm"`).
-    pub(crate) fn post_raw<Req, Resp>(&self, path: &str, body: &Req) -> Result<Resp>
+    fn post<Req, Resp>(&self, path: &str, body: &Req) -> Result<Resp>
     where
         Req: Serialize,
         Resp: for<'de> Deserialize<'de>,
@@ -165,8 +138,8 @@ mod tests {
         let ctx = test_context(&server.url());
         let client = KasmClient::new(&ctx).unwrap();
         let resp: DummyResponse = client
-            .post_admin(
-                "get_users",
+            .post(
+                "admin/get_users",
                 &DummyRequest {
                     target_user: "u1".into(),
                 },
@@ -192,8 +165,8 @@ mod tests {
         let ctx = test_context(&server.url());
         let client = KasmClient::new(&ctx).unwrap();
         let _: DummyResponse = client
-            .post_admin(
-                "get_users",
+            .post(
+                "admin/get_users",
                 &DummyRequest {
                     target_user: "u1".into(),
                 },
@@ -218,8 +191,8 @@ mod tests {
         let ctx = test_context(&server.url());
         let client = KasmClient::new(&ctx).unwrap();
         let _: DummyResponse = client
-            .post_admin(
-                "get_users",
+            .post(
+                "admin/get_users",
                 &DummyRequest {
                     target_user: "u1".into(),
                 },
@@ -240,8 +213,8 @@ mod tests {
 
         let ctx = test_context(&server.url());
         let client = KasmClient::new(&ctx).unwrap();
-        let result: Result<DummyResponse> = client.post_admin(
-            "get_users",
+        let result: Result<DummyResponse> = client.post(
+            "admin/get_users",
             &DummyRequest {
                 target_user: "u1".into(),
             },

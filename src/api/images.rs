@@ -15,7 +15,7 @@ impl KasmClient {
             images: Vec<Image>,
         }
 
-        let resp: Resp = self.post("get_images", &Req {})?;
+        let resp: Resp = self.post("public/get_images", &Req {})?;
         Ok(resp.images)
     }
 }
