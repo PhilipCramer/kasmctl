@@ -2,16 +2,21 @@ pub mod error;
 pub mod images;
 pub mod sessions;
 
-use anyhow::{Context as _, Result};
-use reqwest::Client;
+use std::time::Duration;
+
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use ureq::Agent;
+use ureq::tls::TlsConfig;
 
 use crate::config::model::Context;
 
 use self::error::ApiError;
 
+const DEFAULT_TIMEOUT_SECS: u64 = 30;
+
 pub struct KasmClient {
-    http: Client,
+    agent: Agent,
     base_url: String,
     api_key: String,
     api_secret: String,
@@ -24,13 +29,21 @@ struct ErrorResponse {
 
 impl KasmClient {
     pub fn new(context: &Context) -> Result<Self> {
-        let mut builder = Client::builder();
+        let timeout = Duration::from_secs(context.timeout_seconds.unwrap_or(DEFAULT_TIMEOUT_SECS));
+
+        let mut config_builder = Agent::config_builder()
+            .timeout_global(Some(timeout))
+            .http_status_as_error(false);
+
         if context.insecure_skip_tls_verify {
-            builder = builder.danger_accept_invalid_certs(true);
+            config_builder =
+                config_builder.tls_config(TlsConfig::builder().disable_verification(true).build());
         }
-        let http = builder.build().context("failed to create HTTP client")?;
+
+        let agent: Agent = config_builder.build().into();
+
         Ok(Self {
-            http,
+            agent,
             base_url: context.server.trim_end_matches('/').to_string(),
             api_key: context.api_key.clone(),
             api_secret: context.api_secret.clone(),
@@ -38,25 +51,25 @@ impl KasmClient {
     }
 
     /// POST to a Kasm API endpoint under `/api/public/`.
-    pub(crate) async fn post<Req, Resp>(&self, endpoint: &str, body: &Req) -> Result<Resp>
+    pub(crate) fn post<Req, Resp>(&self, endpoint: &str, body: &Req) -> Result<Resp>
     where
         Req: Serialize,
         Resp: for<'de> Deserialize<'de>,
     {
-        self.post_raw(&format!("public/{endpoint}"), body).await
+        self.post_raw(&format!("public/{endpoint}"), body)
     }
 
     /// POST to a Kasm API endpoint under `/api/` (non-public / internal).
-    pub(crate) async fn post_internal<Req, Resp>(&self, endpoint: &str, body: &Req) -> Result<Resp>
+    pub(crate) fn post_internal<Req, Resp>(&self, endpoint: &str, body: &Req) -> Result<Resp>
     where
         Req: Serialize,
         Resp: for<'de> Deserialize<'de>,
     {
-        self.post_raw(endpoint, body).await
+        self.post_raw(endpoint, body)
     }
 
     /// Core POST helper — `path` is appended to `/api/` (e.g. `"public/get_kasms"` or `"stop_kasm"`).
-    pub(crate) async fn post_raw<Req, Resp>(&self, path: &str, body: &Req) -> Result<Resp>
+    pub(crate) fn post_raw<Req, Resp>(&self, path: &str, body: &Req) -> Result<Resp>
     where
         Req: Serialize,
         Resp: for<'de> Deserialize<'de>,
@@ -70,18 +83,19 @@ impl KasmClient {
 
         let url = format!("{}/api/{}", self.base_url, path);
         let response = self
-            .http
+            .agent
             .post(&url)
-            .json(&payload)
-            .send()
-            .await
-            .map_err(ApiError::Connection)?;
+            .send_json(&payload)
+            .map_err(|e| ApiError::Connection(e.to_string()))?;
 
-        let status = response.status();
-        let text = response.text().await.map_err(ApiError::Connection)?;
+        let status = response.status().as_u16();
+        let body_text = response
+            .into_body()
+            .read_to_string()
+            .map_err(|e| ApiError::Connection(e.to_string()))?;
 
         // Check for API-level error in response body
-        if let Ok(err_resp) = serde_json::from_str::<ErrorResponse>(&text)
+        if let Ok(err_resp) = serde_json::from_str::<ErrorResponse>(&body_text)
             && let Some(msg) = err_resp.error_message
         {
             return Err(ApiError::Server {
@@ -92,7 +106,7 @@ impl KasmClient {
         }
 
         // Check HTTP status
-        if !status.is_success() {
+        if !(200..300).contains(&status) {
             return Err(ApiError::Server {
                 status,
                 message: format!("HTTP {status}"),
@@ -100,6 +114,7 @@ impl KasmClient {
             .into());
         }
 
-        serde_json::from_str(&text).map_err(|e| ApiError::Deserialization(format!("{e}")).into())
+        serde_json::from_str(&body_text)
+            .map_err(|e| ApiError::Deserialization(format!("{e}")).into())
     }
 }

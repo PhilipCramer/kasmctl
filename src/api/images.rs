@@ -6,7 +6,7 @@ use crate::models::image::Image;
 use super::KasmClient;
 
 impl KasmClient {
-    pub async fn get_images(&self) -> Result<Vec<Image>> {
+    pub fn get_images(&self) -> Result<Vec<Image>> {
         #[derive(Serialize)]
         struct Req {}
 
@@ -15,7 +15,7 @@ impl KasmClient {
             images: Vec<Image>,
         }
 
-        let resp: Resp = self.post("get_images", &Req {}).await?;
+        let resp: Resp = self.post("get_images", &Req {})?;
         Ok(resp.images)
     }
 }

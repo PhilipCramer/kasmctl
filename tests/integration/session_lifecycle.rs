@@ -11,27 +11,23 @@ use super::helpers::{
 /// send `user_id` in those requests, which the Kasm internal API requires.
 /// Once the API client is fixed, expand this test to cover the full
 /// create→stop→resume→pause→resume→destroy cycle.
-#[tokio::test]
-async fn session_full_lifecycle() {
+#[test]
+fn session_full_lifecycle() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let image_id = discover_image_id(&client)
-        .await
-        .expect("need an enabled image for lifecycle test");
+    let image_id = discover_image_id(&client).expect("need an enabled image for lifecycle test");
 
-    let resp = match try_create_session(&client, &image_id).await {
+    let resp = match try_create_session(&client, &image_id) {
         Some(resp) => resp,
         None => return,
     };
     let kasm_id = resp.kasm_id.clone();
 
-    // Run all assertions inside a closure so we always clean up.
-    let result: Result<(), String> = async {
-        // Wait for the session to reach "running" (uses get_kasms internally).
-        let session = wait_for_status(&client, &kasm_id, "running")
-            .await
-            .map_err(|e| e.to_string())?;
+    // Run all assertions, capturing the result so we always clean up.
+    let result: Result<(), String> = (|| {
+        // Wait for the session to reach "running".
+        let session = wait_for_status(&client, &kasm_id, "running").map_err(|e| e.to_string())?;
 
         assert_eq!(
             session.operational_status.as_deref(),
@@ -40,26 +36,23 @@ async fn session_full_lifecycle() {
         );
 
         Ok(())
-    }
-    .await;
+    })();
 
     // Always destroy the session, even if assertions failed.
-    let _ = client.destroy_kasm(&kasm_id).await;
+    let _ = client.destroy_kasm(&kasm_id);
 
     result.unwrap();
 }
 
 /// Creating a session returns a response with a valid kasm_id.
-#[tokio::test]
-async fn create_session_returns_valid_response() {
+#[test]
+fn create_session_returns_valid_response() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let image_id = discover_image_id(&client)
-        .await
-        .expect("need an enabled image to create a session");
+    let image_id = discover_image_id(&client).expect("need an enabled image to create a session");
 
-    let resp = match try_create_session(&client, &image_id).await {
+    let resp = match try_create_session(&client, &image_id) {
         Some(resp) => resp,
         None => return,
     };
@@ -71,18 +64,18 @@ async fn create_session_returns_valid_response() {
     );
 
     // Always clean up.
-    let _ = client.destroy_kasm(&kasm_id).await;
+    let _ = client.destroy_kasm(&kasm_id);
 }
 
 /// Destroying a nonexistent session should return an error.
 ///
 /// Uses a well-formed UUID to avoid PostgreSQL `InvalidTextRepresentation` errors.
-#[tokio::test]
-async fn destroy_nonexistent_session_returns_error() {
+#[test]
+fn destroy_nonexistent_session_returns_error() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let result = client.destroy_kasm(NONEXISTENT_UUID).await;
+    let result = client.destroy_kasm(NONEXISTENT_UUID);
 
     assert!(
         result.is_err(),
