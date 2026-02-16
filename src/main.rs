@@ -1,5 +1,8 @@
+use std::io;
+
 use anyhow::{Context, Result};
-use clap::Parser;
+use clap::{CommandFactory, Parser};
+use clap_complete::generate;
 use comfy_table::{Table, presets::UTF8_FULL_CONDENSED};
 
 use kasmctl::api::KasmClient;
@@ -21,6 +24,11 @@ fn main() -> Result<()> {
 
     match cli.command {
         Command::Config(args) => handle_config(args.command),
+        Command::Completion { shell } => {
+            let mut cmd = Cli::command();
+            generate(shell, &mut cmd, "kasmctl", &mut io::stdout());
+            Ok(())
+        }
         cmd => {
             let ctx = kasmctl::config::resolve_context(
                 cli.server.as_deref(),
@@ -36,7 +44,7 @@ fn main() -> Result<()> {
                 Command::Stop(args) => handle_stop(&client, args.resource),
                 Command::Pause(args) => handle_pause(&client, args.resource),
                 Command::Resume(args) => handle_resume(&client, args.resource),
-                Command::Config(_) => unreachable!(),
+                Command::Config(_) | Command::Completion { .. } => unreachable!(),
             }
         }
     }

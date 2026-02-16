@@ -1,4 +1,5 @@
-use clap::Parser;
+use clap::{CommandFactory, Parser};
+use clap_complete::Shell;
 use kasmctl::cli::config_cmd::ConfigCommand;
 use kasmctl::cli::verbs::create::CreateResource;
 use kasmctl::cli::verbs::delete::DeleteResource;
@@ -894,4 +895,93 @@ fn parse_resume_kasms_alias() {
         panic!("expected Resume command");
     };
     assert!(matches!(args.resource, ResumeResource::Sessions { .. }));
+}
+
+// --- Completion commands ---
+
+#[test]
+fn parse_completion_bash() {
+    let cli = Cli::try_parse_from(["kasmctl", "completion", "bash"]).unwrap();
+    assert!(matches!(
+        cli.command,
+        Command::Completion { shell: Shell::Bash }
+    ));
+}
+
+#[test]
+fn parse_completion_zsh() {
+    let cli = Cli::try_parse_from(["kasmctl", "completion", "zsh"]).unwrap();
+    assert!(matches!(
+        cli.command,
+        Command::Completion { shell: Shell::Zsh }
+    ));
+}
+
+#[test]
+fn parse_completion_fish() {
+    let cli = Cli::try_parse_from(["kasmctl", "completion", "fish"]).unwrap();
+    assert!(matches!(
+        cli.command,
+        Command::Completion { shell: Shell::Fish }
+    ));
+}
+
+#[test]
+fn parse_completion_powershell() {
+    let cli = Cli::try_parse_from(["kasmctl", "completion", "powershell"]).unwrap();
+    assert!(matches!(
+        cli.command,
+        Command::Completion {
+            shell: Shell::PowerShell
+        }
+    ));
+}
+
+#[test]
+fn parse_completion_elvish() {
+    let cli = Cli::try_parse_from(["kasmctl", "completion", "elvish"]).unwrap();
+    assert!(matches!(
+        cli.command,
+        Command::Completion {
+            shell: Shell::Elvish
+        }
+    ));
+}
+
+#[test]
+fn parse_completion_missing_shell_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "completion"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_completion_invalid_shell_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "completion", "nushell"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn completion_generates_nonempty_output_for_each_shell() {
+    use clap_complete::generate;
+
+    for shell in [
+        Shell::Bash,
+        Shell::Zsh,
+        Shell::Fish,
+        Shell::PowerShell,
+        Shell::Elvish,
+    ] {
+        let mut buf = Vec::new();
+        let mut cmd = Cli::command();
+        generate(shell, &mut cmd, "kasmctl", &mut buf);
+        assert!(
+            !buf.is_empty(),
+            "completion output for {shell:?} should not be empty"
+        );
+        let output = String::from_utf8(buf).expect("completion output should be valid UTF-8");
+        assert!(
+            output.contains("kasmctl"),
+            "completion output for {shell:?} should reference the binary name"
+        );
+    }
 }
