@@ -68,6 +68,15 @@ impl KasmClient {
         self.post_raw(endpoint, body)
     }
 
+    /// POST to a Kasm API endpoint under `/api/admin/`.
+    pub(crate) fn post_admin<Req, Resp>(&self, endpoint: &str, body: &Req) -> Result<Resp>
+    where
+        Req: Serialize,
+        Resp: for<'de> Deserialize<'de>,
+    {
+        self.post_raw(&format!("admin/{endpoint}"), body)
+    }
+
     /// Core POST helper — `path` is appended to `/api/` (e.g. `"public/get_kasms"` or `"stop_kasm"`).
     pub(crate) fn post_raw<Req, Resp>(&self, path: &str, body: &Req) -> Result<Resp>
     where
@@ -116,5 +125,132 @@ impl KasmClient {
 
         serde_json::from_str(&body_text)
             .map_err(|e| ApiError::Deserialization(format!("{e}")).into())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::model::Context;
+
+    fn test_context(server_url: &str) -> Context {
+        Context {
+            server: server_url.to_string(),
+            api_key: "test-key".into(),
+            api_secret: "test-secret".into(),
+            insecure_skip_tls_verify: false,
+            timeout_seconds: None,
+        }
+    }
+
+    #[derive(Serialize)]
+    struct DummyRequest {
+        target_user: String,
+    }
+
+    #[derive(Deserialize, Debug)]
+    struct DummyResponse {
+        ok: bool,
+    }
+
+    #[test]
+    fn post_admin_routes_to_admin_prefix() {
+        let mut server = mockito::Server::new();
+        let mock = server
+            .mock("POST", "/api/admin/get_users")
+            .with_status(200)
+            .with_body(r#"{"ok":true}"#)
+            .create();
+
+        let ctx = test_context(&server.url());
+        let client = KasmClient::new(&ctx).unwrap();
+        let resp: DummyResponse = client
+            .post_admin(
+                "get_users",
+                &DummyRequest {
+                    target_user: "u1".into(),
+                },
+            )
+            .unwrap();
+
+        assert!(resp.ok);
+        mock.assert();
+    }
+
+    #[test]
+    fn post_admin_injects_auth_credentials() {
+        let mut server = mockito::Server::new();
+        let mock = server
+            .mock("POST", "/api/admin/get_users")
+            .match_body(mockito::Matcher::PartialJsonString(
+                r#"{"api_key":"test-key","api_key_secret":"test-secret"}"#.into(),
+            ))
+            .with_status(200)
+            .with_body(r#"{"ok":true}"#)
+            .create();
+
+        let ctx = test_context(&server.url());
+        let client = KasmClient::new(&ctx).unwrap();
+        let _: DummyResponse = client
+            .post_admin(
+                "get_users",
+                &DummyRequest {
+                    target_user: "u1".into(),
+                },
+            )
+            .unwrap();
+
+        mock.assert();
+    }
+
+    #[test]
+    fn post_admin_forwards_request_body() {
+        let mut server = mockito::Server::new();
+        let mock = server
+            .mock("POST", "/api/admin/get_users")
+            .match_body(mockito::Matcher::PartialJsonString(
+                r#"{"target_user":"u1"}"#.into(),
+            ))
+            .with_status(200)
+            .with_body(r#"{"ok":true}"#)
+            .create();
+
+        let ctx = test_context(&server.url());
+        let client = KasmClient::new(&ctx).unwrap();
+        let _: DummyResponse = client
+            .post_admin(
+                "get_users",
+                &DummyRequest {
+                    target_user: "u1".into(),
+                },
+            )
+            .unwrap();
+
+        mock.assert();
+    }
+
+    #[test]
+    fn post_admin_error_message_in_response() {
+        let mut server = mockito::Server::new();
+        let mock = server
+            .mock("POST", "/api/admin/get_users")
+            .with_status(200)
+            .with_body(r#"{"error_message":"permission denied"}"#)
+            .create();
+
+        let ctx = test_context(&server.url());
+        let client = KasmClient::new(&ctx).unwrap();
+        let result: Result<DummyResponse> = client.post_admin(
+            "get_users",
+            &DummyRequest {
+                target_user: "u1".into(),
+            },
+        );
+
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("permission denied"), "error was: {err}");
+
+        mock.assert();
     }
 }
