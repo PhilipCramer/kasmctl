@@ -3,6 +3,7 @@ pub mod filters;
 pub mod verbs;
 
 use clap::Parser;
+use clap_complete::Shell;
 
 use crate::output::OutputFormat;
 
@@ -53,4 +54,9 @@ pub enum Command {
     Resume(ResumeArgs),
     /// Manage configuration contexts
     Config(ConfigArgs),
+    /// Generate shell completion scripts
+    Completion {
+        /// Shell to generate completions for
+        shell: Shell,
+    },
 }
