@@ -118,7 +118,10 @@ fn parse_get_images() {
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    assert!(matches!(args.resource, GetResource::Images));
+    let GetResource::Images { filters } = args.resource else {
+        panic!("expected Images resource");
+    };
+    assert!(filters.is_empty());
 }
 
 #[test]
@@ -143,6 +146,111 @@ fn parse_get_images_positional_id_fails() {
 fn parse_get_image_requires_id() {
     let result = Cli::try_parse_from(["kasmctl", "get", "image"]);
     assert!(result.is_err());
+}
+
+// --- Get images filter tests ---
+
+#[test]
+fn parse_get_images_with_enabled_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "images", "--enabled"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Images { filters } = args.resource else {
+        panic!("expected Images resource");
+    };
+    assert!(filters.enabled);
+    assert!(!filters.disabled);
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_images_with_disabled_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "images", "--disabled"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Images { filters } = args.resource else {
+        panic!("expected Images resource");
+    };
+    assert!(!filters.enabled);
+    assert!(filters.disabled);
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_images_enabled_disabled_conflict() {
+    let result = Cli::try_parse_from(["kasmctl", "get", "images", "--enabled", "--disabled"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_get_images_with_name_filter() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "images", "--name", "ubuntu"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Images { filters } = args.resource else {
+        panic!("expected Images resource");
+    };
+    assert_eq!(filters.name.as_deref(), Some("ubuntu"));
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_images_with_image_type_filter() {
+    let cli =
+        Cli::try_parse_from(["kasmctl", "get", "images", "--image-type", "Container"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Images { filters } = args.resource else {
+        panic!("expected Images resource");
+    };
+    assert_eq!(filters.image_type.as_deref(), Some("Container"));
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_images_with_all_filters() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "get",
+        "images",
+        "--enabled",
+        "--name",
+        "ubuntu",
+        "--image-type",
+        "Container",
+    ])
+    .unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Images { filters } = args.resource else {
+        panic!("expected Images resource");
+    };
+    assert!(filters.enabled);
+    assert!(!filters.disabled);
+    assert_eq!(filters.name.as_deref(), Some("ubuntu"));
+    assert_eq!(filters.image_type.as_deref(), Some("Container"));
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_images_no_filters_is_empty() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "images"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Images { filters } = args.resource else {
+        panic!("expected Images resource");
+    };
+    assert!(filters.is_empty());
+    assert!(!filters.enabled);
+    assert!(!filters.disabled);
+    assert!(filters.name.is_none());
+    assert!(filters.image_type.is_none());
 }
 
 // --- Create commands ---
