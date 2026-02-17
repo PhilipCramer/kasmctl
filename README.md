@@ -147,7 +147,7 @@ kasmctl [OPTIONS] <COMMAND>
 | `get image <ID>` | Get details for a specific image |
 | `get images [FILTERS]` | List all available workspace images, optionally filtered |
 | `create session --image <ID> [--user <ID>]` | Create a new session from a workspace image |
-| `create image --name <NAME> --friendly-name <NAME>` | Create a new workspace image |
+| `create image --name <NAME> --friendly-name <NAME> [OPTIONS]` | Create a new workspace image |
 | `update image <ID> [OPTIONS]` | Update an existing workspace image |
 | `delete session <ID>` | Delete a session |
 | `delete image <ID>` | Delete an image |
@@ -190,6 +190,42 @@ Multiple filters can be combined and are applied with AND logic.
 | `--disabled` | Only show disabled images |
 | `--name <NAME>` | Filter by friendly name (case-insensitive substring match) |
 | `--image-type <TYPE>` | Filter by image type / source (e.g. `Container`, `Server`) |
+
+### Create image options
+
+`create image` requires `--name` and `--friendly-name`. All other options are optional:
+
+| Option | Description |
+|---|---|
+| `--name <NAME>` | Docker image name (e.g. `kasmweb/terminal:1.18.0`) **(required)** |
+| `--friendly-name <NAME>` | Human-readable display name **(required)** |
+| `--description <TEXT>` | Image description |
+| `--cores <CORES>` | Number of CPU cores to allocate |
+| `--memory <BYTES>` | Memory in bytes to allocate |
+| `--enabled <BOOL>` | Whether the image is enabled (default: `true`) |
+| `--image-src <SRC>` | Image source type (default: `Container`) |
+| `--docker-registry <URL>` | Docker registry URL |
+| `--run-config <JSON>` | Run configuration JSON |
+| `--exec-config <JSON>` | Exec configuration JSON |
+| `--image-type <TYPE>` | Image type (e.g. `Container`, `Server`) |
+
+### Update image options
+
+`update image <ID>` accepts any combination of the following options. Only specified fields are changed:
+
+| Option | Description |
+|---|---|
+| `--name <NAME>` | Docker image name |
+| `--friendly-name <NAME>` | Human-readable display name |
+| `--description <TEXT>` | Image description |
+| `--cores <CORES>` | Number of CPU cores |
+| `--memory <BYTES>` | Memory in bytes |
+| `--enabled <BOOL>` | Enable or disable the image |
+| `--image-src <SRC>` | Image thumbnail source path |
+| `--docker-registry <URL>` | Docker registry URL |
+| `--run-config <JSON>` | Docker run config override (JSON) |
+| `--exec-config <JSON>` | Docker exec config override (JSON) |
+| `--hidden <BOOL>` | Hide the image from users |
 
 ### Resource aliases
 
