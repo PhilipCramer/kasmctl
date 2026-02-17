@@ -7,6 +7,7 @@ use kasmctl::cli::verbs::get::GetResource;
 use kasmctl::cli::verbs::pause::PauseResource;
 use kasmctl::cli::verbs::resume::ResumeResource;
 use kasmctl::cli::verbs::stop::StopResource;
+use kasmctl::cli::verbs::update::UpdateResource;
 use kasmctl::cli::{Cli, Command};
 use kasmctl::output::OutputFormat;
 
@@ -1197,4 +1198,122 @@ fn completion_generates_nonempty_output_for_each_shell() {
             "completion output for {shell:?} should reference the binary name"
         );
     }
+}
+
+// --- Update commands ---
+
+#[test]
+fn parse_update_image_with_id_only() {
+    let cli = Cli::try_parse_from(["kasmctl", "update", "image", "img-abc"]).unwrap();
+    let Command::Update(args) = cli.command else {
+        panic!("expected Update command");
+    };
+    let UpdateResource::Image { id, .. } = args.resource;
+    assert_eq!(id, "img-abc");
+}
+
+#[test]
+fn parse_update_image_missing_id_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "update", "image"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_update_image_with_all_flags() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "update",
+        "image",
+        "img-abc",
+        "--name",
+        "kasmweb/ubuntu:1.18.0",
+        "--friendly-name",
+        "Ubuntu Desktop",
+        "--description",
+        "A desktop workspace",
+        "--cores",
+        "4.0",
+        "--memory",
+        "4096000000",
+        "--enabled",
+        "true",
+        "--image-src",
+        "img/thumbnails/ubuntu.png",
+        "--docker-registry",
+        "https://index.docker.io/v1/",
+        "--run-config",
+        "{}",
+        "--exec-config",
+        "{}",
+        "--hidden",
+        "false",
+    ])
+    .unwrap();
+    let Command::Update(args) = cli.command else {
+        panic!("expected Update command");
+    };
+    let UpdateResource::Image {
+        id,
+        name,
+        friendly_name,
+        description,
+        cores,
+        memory,
+        enabled,
+        image_src,
+        docker_registry,
+        run_config,
+        exec_config,
+        hidden,
+    } = args.resource;
+    assert_eq!(id, "img-abc");
+    assert_eq!(name.as_deref(), Some("kasmweb/ubuntu:1.18.0"));
+    assert_eq!(friendly_name.as_deref(), Some("Ubuntu Desktop"));
+    assert_eq!(description.as_deref(), Some("A desktop workspace"));
+    assert_eq!(cores, Some(4.0));
+    assert_eq!(memory, Some(4096000000));
+    assert_eq!(enabled, Some(true));
+    assert_eq!(image_src.as_deref(), Some("img/thumbnails/ubuntu.png"));
+    assert_eq!(
+        docker_registry.as_deref(),
+        Some("https://index.docker.io/v1/")
+    );
+    assert_eq!(run_config.as_deref(), Some("{}"));
+    assert_eq!(exec_config.as_deref(), Some("{}"));
+    assert_eq!(hidden, Some(false));
+}
+
+#[test]
+fn parse_update_image_with_partial_flags() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "update",
+        "image",
+        "img-abc",
+        "--friendly-name",
+        "New Name",
+        "--enabled",
+        "false",
+    ])
+    .unwrap();
+    let Command::Update(args) = cli.command else {
+        panic!("expected Update command");
+    };
+    let UpdateResource::Image {
+        id,
+        name,
+        friendly_name,
+        enabled,
+        ..
+    } = args.resource;
+    assert_eq!(id, "img-abc");
+    assert!(name.is_none());
+    assert_eq!(friendly_name.as_deref(), Some("New Name"));
+    assert_eq!(enabled, Some(false));
+}
+
+#[test]
+fn parse_update_no_subcommand_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "update"]);
+    assert!(result.is_err());
 }

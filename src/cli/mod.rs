@@ -14,6 +14,7 @@ use self::verbs::get::GetArgs;
 use self::verbs::pause::PauseArgs;
 use self::verbs::resume::ResumeArgs;
 use self::verbs::stop::StopArgs;
+use self::verbs::update::UpdateArgs;
 
 #[derive(Parser)]
 #[command(name = "kasmctl", version, about = "CLI for managing Kasm Workspaces")]
@@ -52,6 +53,8 @@ pub enum Command {
     Pause(PauseArgs),
     /// Resume a stopped or paused session
     Resume(ResumeArgs),
+    /// Update a resource
+    Update(UpdateArgs),
     /// Manage configuration contexts
     Config(ConfigArgs),
     /// Generate shell completion scripts
