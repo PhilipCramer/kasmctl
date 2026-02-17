@@ -481,10 +481,7 @@ fn create_image_api_error() {
 
     assert!(result.is_err());
     let err = result.unwrap_err().to_string();
-    assert!(
-        err.contains("image already exists"),
-        "error was: {err}"
-    );
+    assert!(err.contains("image already exists"), "error was: {err}");
 }
 
 // --- delete_image ---

@@ -6,13 +6,13 @@ use clap_complete::generate;
 use comfy_table::{Table, presets::UTF8_FULL_CONDENSED};
 
 use kasmctl::api::KasmClient;
+use kasmctl::api::images::UpdateImageRequest;
 use kasmctl::cli::config_cmd::ConfigCommand;
 use kasmctl::cli::verbs::create::CreateResource;
 use kasmctl::cli::verbs::delete::DeleteResource;
 use kasmctl::cli::verbs::get::GetResource;
 use kasmctl::cli::verbs::pause::PauseResource;
 use kasmctl::cli::verbs::resume::ResumeResource;
-use kasmctl::api::images::UpdateImageRequest;
 use kasmctl::cli::verbs::stop::StopResource;
 use kasmctl::cli::verbs::update::UpdateResource;
 use kasmctl::cli::{Cli, Command};
