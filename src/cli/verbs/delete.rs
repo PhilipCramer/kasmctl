@@ -14,4 +14,9 @@ pub enum DeleteResource {
         /// Session ID to delete
         id: String,
     },
+    /// Delete an image
+    Image {
+        /// Image ID to delete
+        id: String,
+    },
 }

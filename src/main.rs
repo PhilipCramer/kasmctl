@@ -122,6 +122,10 @@ fn handle_delete(client: &KasmClient, resource: DeleteResource) -> Result<()> {
                 .context("failed to delete session")?;
             println!("Session {id} deleted.");
         }
+        DeleteResource::Image { id } => {
+            client.delete_image(&id).context("failed to delete image")?;
+            println!("Image {id} deleted.");
+        }
     }
     Ok(())
 }
