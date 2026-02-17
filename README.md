@@ -5,9 +5,10 @@ A command-line tool for managing [Kasm Workspaces](https://kasm.com), inspired b
 ## Features
 
 - **Session management** — list, inspect, create, delete, stop, pause, and resume sessions
-- **Image browsing** — list and inspect available workspace images
+- **Image management** — list, inspect, create, update, and delete workspace images
 - **Multi-context configuration** — manage multiple Kasm servers with kubeconfig-style contexts
 - **Flexible output** — table, JSON, and YAML output formats
+- **Shell completions** — generate completions for bash, zsh, fish, and more
 
 ## Installation
 
@@ -63,18 +64,6 @@ kasmctl create session --image <IMAGE_ID>
 kasmctl delete session <SESSION_ID>
 ```
 
-### List images
-
-```sh
-kasmctl get images
-```
-
-### Get a specific image
-
-```sh
-kasmctl get image <IMAGE_ID>
-```
-
 ### Stop, pause, or resume a session
 
 ```sh
@@ -92,6 +81,46 @@ kasmctl stop sessions --status running
 kasmctl pause sessions --idle-for 2h --yes
 kasmctl resume sessions --user <USER_ID>
 kasmctl get sessions --image <IMAGE_ID> --created-after "2024-01-01 00:00:00"
+```
+
+### List images
+
+```sh
+kasmctl get images
+kasmctl get images --enabled
+kasmctl get images --name ubuntu
+```
+
+### Get a specific image
+
+```sh
+kasmctl get image <IMAGE_ID>
+```
+
+### Create an image
+
+```sh
+kasmctl create image --name kasmweb/terminal:1.18.0 --friendly-name "Terminal"
+```
+
+### Update an image
+
+```sh
+kasmctl update image <IMAGE_ID> --friendly-name "New Name" --enabled false
+```
+
+### Delete an image
+
+```sh
+kasmctl delete image <IMAGE_ID>
+```
+
+### Shell completions
+
+```sh
+kasmctl completion bash >> ~/.bashrc
+kasmctl completion zsh >> ~/.zshrc
+kasmctl completion fish > ~/.config/fish/completions/kasmctl.fish
 ```
 
 ## Usage
@@ -116,9 +145,12 @@ kasmctl [OPTIONS] <COMMAND>
 | `get session <ID> --user <USER>` | Get details for a specific session |
 | `get sessions [FILTERS]` | List all sessions, optionally filtered |
 | `get image <ID>` | Get details for a specific image |
-| `get images` | List all available workspace images |
+| `get images [FILTERS]` | List all available workspace images, optionally filtered |
 | `create session --image <ID> [--user <ID>]` | Create a new session from a workspace image |
+| `create image --name <NAME> --friendly-name <NAME>` | Create a new workspace image |
+| `update image <ID> [OPTIONS]` | Update an existing workspace image |
 | `delete session <ID>` | Delete a session |
+| `delete image <ID>` | Delete an image |
 | `stop session <ID>` | Stop a session (frees memory/CPU, keeps disk) |
 | `stop sessions [FILTERS] [-y]` | Stop multiple sessions matching filters |
 | `pause session <ID>` | Pause a session (retains memory, stops CPU) |
@@ -128,6 +160,7 @@ kasmctl [OPTIONS] <COMMAND>
 | `config set-context <NAME>` | Add or update a context |
 | `config use-context <NAME>` | Switch the active context |
 | `config get-contexts` | List all configured contexts |
+| `completion <SHELL>` | Generate shell completions (bash, zsh, fish, etc.) |
 
 ### Session filter options
 
@@ -146,6 +179,17 @@ Bulk commands (`stop sessions`, `pause sessions`, `resume sessions`) and `get se
 | `-y, --yes` | Skip confirmation prompt (bulk operations only) |
 
 Multiple filters can be combined and are applied with AND logic.
+
+### Image filter options
+
+`get images` accepts the following filters:
+
+| Option | Description |
+|---|---|
+| `--enabled` | Only show enabled images |
+| `--disabled` | Only show disabled images |
+| `--name <NAME>` | Filter by friendly name (case-insensitive substring match) |
+| `--image-type <TYPE>` | Filter by image type / source (e.g. `Container`, `Server`) |
 
 ### Resource aliases
 
