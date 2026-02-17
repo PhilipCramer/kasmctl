@@ -301,7 +301,9 @@ fn parse_delete_session() {
     let Command::Delete(args) = cli.command else {
         panic!("expected Delete command");
     };
-    let DeleteResource::Session { id } = args.resource;
+    let DeleteResource::Session { id } = args.resource else {
+        panic!("expected Session resource");
+    };
     assert_eq!(id, "kasm-789");
 }
 
@@ -315,6 +317,26 @@ fn parse_delete_session_missing_id_fails() {
 fn parse_delete_kasm_alias() {
     let cli = Cli::try_parse_from(["kasmctl", "delete", "kasm", "kasm-789"]).unwrap();
     assert!(matches!(cli.command, Command::Delete(_)));
+}
+
+// --- Delete image commands ---
+
+#[test]
+fn parse_delete_image() {
+    let cli = Cli::try_parse_from(["kasmctl", "delete", "image", "img-abc"]).unwrap();
+    let Command::Delete(args) = cli.command else {
+        panic!("expected Delete command");
+    };
+    let DeleteResource::Image { id } = args.resource else {
+        panic!("expected Image resource");
+    };
+    assert_eq!(id, "img-abc");
+}
+
+#[test]
+fn parse_delete_image_missing_id_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "delete", "image"]);
+    assert!(result.is_err());
 }
 
 // --- Stop commands ---

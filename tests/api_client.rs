@@ -342,6 +342,64 @@ fn get_images_injects_auth_credentials() {
     mock.assert();
 }
 
+// --- delete_image ---
+
+#[test]
+fn delete_image_success() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/delete_image")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"target_image":{"image_id":"img-abc"}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    client.delete_image("img-abc").unwrap();
+
+    mock.assert();
+}
+
+#[test]
+fn delete_image_injects_auth_credentials() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/delete_image")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"api_key":"test-key","api_key_secret":"test-secret"}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    client.delete_image("img-abc").unwrap();
+
+    mock.assert();
+}
+
+#[test]
+fn delete_image_api_error() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/delete_image")
+        .with_status(200)
+        .with_body(r#"{"error_message":"image not found"}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.delete_image("img-abc");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(err.contains("image not found"), "error was: {err}");
+}
+
 // --- stop_kasm ---
 
 #[test]
