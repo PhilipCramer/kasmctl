@@ -398,13 +398,7 @@ fn parse_create_image_all_flags() {
 
 #[test]
 fn parse_create_image_missing_name_fails() {
-    let result = Cli::try_parse_from([
-        "kasmctl",
-        "create",
-        "image",
-        "--friendly-name",
-        "Terminal",
-    ]);
+    let result = Cli::try_parse_from(["kasmctl", "create", "image", "--friendly-name", "Terminal"]);
     assert!(result.is_err());
 }
 
