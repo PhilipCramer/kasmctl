@@ -545,6 +545,184 @@ fn delete_image_api_error() {
     assert!(err.contains("image not found"), "error was: {err}");
 }
 
+// --- update_image ---
+
+#[test]
+fn update_image_success() {
+    use kasmctl::api::images::UpdateImageRequest;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/update_image")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"target_image":{"image_id":"img-001","friendly_name":"New Name"}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{"image":{"image_id":"img-001","friendly_name":"New Name","enabled":true}}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let req = UpdateImageRequest {
+        image_id: "img-001".into(),
+        name: None,
+        friendly_name: Some("New Name".into()),
+        description: None,
+        cores: None,
+        memory: None,
+        enabled: None,
+        image_src: None,
+        docker_registry: None,
+        run_config: None,
+        exec_config: None,
+        hidden: None,
+    };
+    let image = client.update_image(&req).unwrap();
+
+    assert_eq!(image.image_id, "img-001");
+    assert_eq!(image.friendly_name.as_deref(), Some("New Name"));
+    mock.assert();
+}
+
+#[test]
+fn update_image_sends_target_image_wrapper() {
+    use kasmctl::api::images::UpdateImageRequest;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/update_image")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"target_image":{"image_id":"img-001","cores":4.0,"enabled":false}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{"image":{"image_id":"img-001"}}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let req = UpdateImageRequest {
+        image_id: "img-001".into(),
+        name: None,
+        friendly_name: None,
+        description: None,
+        cores: Some(4.0),
+        memory: None,
+        enabled: Some(false),
+        image_src: None,
+        docker_registry: None,
+        run_config: None,
+        exec_config: None,
+        hidden: None,
+    };
+    client.update_image(&req).unwrap();
+
+    mock.assert();
+}
+
+#[test]
+fn update_image_omits_none_fields() {
+    use kasmctl::api::images::UpdateImageRequest;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/update_image")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"target_image":{"image_id":"img-001"}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{"image":{"image_id":"img-001"}}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let req = UpdateImageRequest {
+        image_id: "img-001".into(),
+        name: None,
+        friendly_name: None,
+        description: None,
+        cores: None,
+        memory: None,
+        enabled: None,
+        image_src: None,
+        docker_registry: None,
+        run_config: None,
+        exec_config: None,
+        hidden: None,
+    };
+    client.update_image(&req).unwrap();
+
+    mock.assert();
+}
+
+#[test]
+fn update_image_injects_auth_credentials() {
+    use kasmctl::api::images::UpdateImageRequest;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/update_image")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"api_key":"test-key","api_key_secret":"test-secret"}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{"image":{"image_id":"img-001"}}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let req = UpdateImageRequest {
+        image_id: "img-001".into(),
+        name: None,
+        friendly_name: None,
+        description: None,
+        cores: None,
+        memory: None,
+        enabled: None,
+        image_src: None,
+        docker_registry: None,
+        run_config: None,
+        exec_config: None,
+        hidden: None,
+    };
+    client.update_image(&req).unwrap();
+
+    mock.assert();
+}
+
+#[test]
+fn update_image_api_error() {
+    use kasmctl::api::images::UpdateImageRequest;
+
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/update_image")
+        .with_status(200)
+        .with_body(r#"{"error_message":"image not found"}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let req = UpdateImageRequest {
+        image_id: "nonexistent".into(),
+        name: None,
+        friendly_name: None,
+        description: None,
+        cores: None,
+        memory: None,
+        enabled: None,
+        image_src: None,
+        docker_registry: None,
+        run_config: None,
+        exec_config: None,
+        hidden: None,
+    };
+    let result = client.update_image(&req);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(err.contains("image not found"), "error was: {err}");
+}
+
 // --- stop_kasm ---
 
 #[test]

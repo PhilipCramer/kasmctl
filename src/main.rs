@@ -12,7 +12,9 @@ use kasmctl::cli::verbs::delete::DeleteResource;
 use kasmctl::cli::verbs::get::GetResource;
 use kasmctl::cli::verbs::pause::PauseResource;
 use kasmctl::cli::verbs::resume::ResumeResource;
+use kasmctl::api::images::UpdateImageRequest;
 use kasmctl::cli::verbs::stop::StopResource;
+use kasmctl::cli::verbs::update::UpdateResource;
 use kasmctl::cli::{Cli, Command};
 use kasmctl::config::model::{Context as KasmContext, NamedContext};
 use kasmctl::config::{load_config, save_config};
@@ -44,6 +46,7 @@ fn main() -> Result<()> {
                 Command::Stop(args) => handle_stop(&client, args.resource),
                 Command::Pause(args) => handle_pause(&client, args.resource),
                 Command::Resume(args) => handle_resume(&client, args.resource),
+                Command::Update(args) => handle_update(&client, args.resource, &cli.output),
                 Command::Config(_) | Command::Completion { .. } => unreachable!(),
             }
         }
@@ -156,6 +159,49 @@ fn handle_delete(client: &KasmClient, resource: DeleteResource) -> Result<()> {
         DeleteResource::Image { id } => {
             client.delete_image(&id).context("failed to delete image")?;
             println!("Image {id} deleted.");
+        }
+    }
+    Ok(())
+}
+
+fn handle_update(
+    client: &KasmClient,
+    resource: UpdateResource,
+    format: &OutputFormat,
+) -> Result<()> {
+    match resource {
+        UpdateResource::Image {
+            id,
+            name,
+            friendly_name,
+            description,
+            cores,
+            memory,
+            enabled,
+            image_src,
+            docker_registry,
+            run_config,
+            exec_config,
+            hidden,
+        } => {
+            let req = UpdateImageRequest {
+                image_id: id,
+                name,
+                friendly_name,
+                description,
+                cores,
+                memory,
+                enabled,
+                image_src,
+                docker_registry,
+                run_config,
+                exec_config,
+                hidden,
+            };
+            let image = client
+                .update_image(&req)
+                .context("failed to update image")?;
+            println!("{}", output::render_one(&image, format)?);
         }
     }
     Ok(())
