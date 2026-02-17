@@ -4,13 +4,47 @@ A command-line tool for managing [Kasm Workspaces](https://kasm.com), inspired b
 
 ## Features
 
-- **Session management** — list, inspect, create, delete, stop, pause, and resume sessions
-- **Image management** — list, inspect, create, update, and delete workspace images
+- **Session management** — get, create, delete, stop, pause, and resume sessions
+- **Image management** — get, create, update, and delete workspace images
 - **Multi-context configuration** — manage multiple Kasm servers with kubeconfig-style contexts
 - **Flexible output** — table, JSON, and YAML output formats
 - **Shell completions** — generate completions for bash, zsh, fish, and more
 
 ## Installation
+
+### Pre-built binaries
+
+#### Quick install
+
+```sh
+curl -sSL https://raw.githubusercontent.com/PhilipCramer/kasmctl/main/packaging/install.sh | sh
+```
+
+The installer automatically detects your platform, downloads the latest release, and verifies the checksum. You can customize the install with environment variables:
+
+| Variable | Description | Default |
+|---|---|---|
+| `KASMCTL_VERSION` | Version to install (e.g. `0.1.0`) | latest |
+| `KASMCTL_INSTALL` | Install directory | `/usr/local/bin` |
+
+#### Manual download
+
+Download the archive for your platform from the [latest release](https://github.com/PhilipCramer/kasmctl/releases/latest):
+
+| Platform | Archive |
+|---|---|
+| Linux x86_64 | `kasmctl-linux-amd64.tar.gz` |
+| Linux ARM64 | `kasmctl-linux-arm64.tar.gz` |
+| macOS Intel | `kasmctl-darwin-amd64.tar.gz` |
+| macOS Apple Silicon | `kasmctl-darwin-arm64.tar.gz` |
+
+Then extract and install:
+
+```sh
+tar xzf kasmctl-*.tar.gz
+sudo mv kasmctl /usr/local/bin/
+kasmctl --version
+```
 
 ### From source
 
