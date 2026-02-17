@@ -110,6 +110,37 @@ fn handle_create(
                 }
             }
         }
+        CreateResource::Image {
+            name,
+            friendly_name,
+            description,
+            cores,
+            memory,
+            enabled,
+            image_src,
+            docker_registry,
+            run_config,
+            exec_config,
+            image_type,
+        } => {
+            let params = kasmctl::api::images::CreateImageParams {
+                name,
+                friendly_name,
+                description,
+                cores,
+                memory,
+                enabled,
+                image_src,
+                docker_registry,
+                run_config,
+                exec_config,
+                image_type,
+            };
+            let image = client
+                .create_image(&params)
+                .context("failed to create image")?;
+            println!("{}", output::render_one(&image, format)?);
+        }
     }
     Ok(())
 }

@@ -342,6 +342,151 @@ fn get_images_injects_auth_credentials() {
     mock.assert();
 }
 
+// --- create_image ---
+
+#[test]
+fn create_image_success() {
+    use kasmctl::api::images::CreateImageParams;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/create_image")
+        .with_status(200)
+        .with_body(
+            r#"{"image":{"image_id":"new-img-1","friendly_name":"Terminal","name":"kasmweb/terminal:1.18.0","description":null,"enabled":true,"cores":2.0,"memory":2147483648,"image_src":"Container"}}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let params = CreateImageParams {
+        name: "kasmweb/terminal:1.18.0".into(),
+        friendly_name: "Terminal".into(),
+        description: None,
+        cores: Some(2.0),
+        memory: Some(2147483648),
+        enabled: true,
+        image_src: "Container".into(),
+        docker_registry: None,
+        run_config: None,
+        exec_config: None,
+        image_type: None,
+    };
+    let image = client.create_image(&params).unwrap();
+
+    assert_eq!(image.image_id, "new-img-1");
+    assert_eq!(image.friendly_name.as_deref(), Some("Terminal"));
+    mock.assert();
+}
+
+#[test]
+fn create_image_sends_target_image_wrapper() {
+    use kasmctl::api::images::CreateImageParams;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/create_image")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"target_image":{"name":"kasmweb/terminal:1.18.0","friendly_name":"Terminal","enabled":true,"image_src":"Container"}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(
+            r#"{"image":{"image_id":"new-img-1","friendly_name":"Terminal","name":"kasmweb/terminal:1.18.0","description":null,"enabled":true,"cores":2.0,"memory":2147483648,"image_src":"Container"}}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let params = CreateImageParams {
+        name: "kasmweb/terminal:1.18.0".into(),
+        friendly_name: "Terminal".into(),
+        description: None,
+        cores: None,
+        memory: None,
+        enabled: true,
+        image_src: "Container".into(),
+        docker_registry: None,
+        run_config: None,
+        exec_config: None,
+        image_type: None,
+    };
+    client.create_image(&params).unwrap();
+
+    mock.assert();
+}
+
+#[test]
+fn create_image_injects_auth_credentials() {
+    use kasmctl::api::images::CreateImageParams;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/create_image")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"api_key":"test-key","api_key_secret":"test-secret"}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(
+            r#"{"image":{"image_id":"new-img-1","friendly_name":"Terminal","name":"kasmweb/terminal:1.18.0","description":null,"enabled":true,"cores":2.0,"memory":2147483648,"image_src":"Container"}}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let params = CreateImageParams {
+        name: "kasmweb/terminal:1.18.0".into(),
+        friendly_name: "Terminal".into(),
+        description: None,
+        cores: None,
+        memory: None,
+        enabled: true,
+        image_src: "Container".into(),
+        docker_registry: None,
+        run_config: None,
+        exec_config: None,
+        image_type: None,
+    };
+    client.create_image(&params).unwrap();
+
+    mock.assert();
+}
+
+#[test]
+fn create_image_api_error() {
+    use kasmctl::api::images::CreateImageParams;
+
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/create_image")
+        .with_status(200)
+        .with_body(r#"{"error_message":"image already exists"}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let params = CreateImageParams {
+        name: "kasmweb/terminal:1.18.0".into(),
+        friendly_name: "Terminal".into(),
+        description: None,
+        cores: None,
+        memory: None,
+        enabled: true,
+        image_src: "Container".into(),
+        docker_registry: None,
+        run_config: None,
+        exec_config: None,
+        image_type: None,
+    };
+    let result = client.create_image(&params);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("image already exists"),
+        "error was: {err}"
+    );
+}
+
 // --- delete_image ---
 
 #[test]
