@@ -262,7 +262,9 @@ fn parse_create_session() {
     let Command::Create(args) = cli.command else {
         panic!("expected Create command");
     };
-    let CreateResource::Session { image, user } = args.resource;
+    let CreateResource::Session { image, user } = args.resource else {
+        panic!("expected Session resource");
+    };
     assert_eq!(image, "img-123");
     assert!(user.is_none());
 }
@@ -276,7 +278,9 @@ fn parse_create_session_with_user() {
     let Command::Create(args) = cli.command else {
         panic!("expected Create command");
     };
-    let CreateResource::Session { image, user } = args.resource;
+    let CreateResource::Session { image, user } = args.resource else {
+        panic!("expected Session resource");
+    };
     assert_eq!(image, "img-123");
     assert_eq!(user.as_deref(), Some("user-456"));
 }
@@ -291,6 +295,193 @@ fn parse_create_session_missing_image_fails() {
 fn parse_create_kasm_alias() {
     let cli = Cli::try_parse_from(["kasmctl", "create", "kasm", "--image", "img-123"]).unwrap();
     assert!(matches!(cli.command, Command::Create(_)));
+}
+
+// --- Create image commands ---
+
+#[test]
+fn parse_create_image_required_flags() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "image",
+        "--name",
+        "kasmweb/terminal:1.18.0",
+        "--friendly-name",
+        "Terminal",
+    ])
+    .unwrap();
+    let Command::Create(args) = cli.command else {
+        panic!("expected Create command");
+    };
+    let CreateResource::Image {
+        name,
+        friendly_name,
+        enabled,
+        image_src,
+        ..
+    } = args.resource
+    else {
+        panic!("expected Image resource");
+    };
+    assert_eq!(name, "kasmweb/terminal:1.18.0");
+    assert_eq!(friendly_name, "Terminal");
+    assert!(enabled);
+    assert_eq!(image_src, "Container");
+}
+
+#[test]
+fn parse_create_image_all_flags() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "image",
+        "--name",
+        "kasmweb/ubuntu:1.18.0",
+        "--friendly-name",
+        "Ubuntu Desktop",
+        "--description",
+        "Full Ubuntu desktop",
+        "--cores",
+        "4",
+        "--memory",
+        "4294967296",
+        "--enabled",
+        "false",
+        "--image-src",
+        "Server",
+        "--docker-registry",
+        "https://registry.example.com",
+        "--run-config",
+        r#"{"hostname":"test"}"#,
+        "--exec-config",
+        r#"{"go":{"cmd":"bash"}}"#,
+        "--image-type",
+        "Server",
+    ])
+    .unwrap();
+    let Command::Create(args) = cli.command else {
+        panic!("expected Create command");
+    };
+    let CreateResource::Image {
+        name,
+        friendly_name,
+        description,
+        cores,
+        memory,
+        enabled,
+        image_src,
+        docker_registry,
+        run_config,
+        exec_config,
+        image_type,
+    } = args.resource
+    else {
+        panic!("expected Image resource");
+    };
+    assert_eq!(name, "kasmweb/ubuntu:1.18.0");
+    assert_eq!(friendly_name, "Ubuntu Desktop");
+    assert_eq!(description.as_deref(), Some("Full Ubuntu desktop"));
+    assert_eq!(cores, Some(4.0));
+    assert_eq!(memory, Some(4294967296));
+    assert!(!enabled);
+    assert_eq!(image_src, "Server");
+    assert_eq!(
+        docker_registry.as_deref(),
+        Some("https://registry.example.com")
+    );
+    assert_eq!(run_config.as_deref(), Some(r#"{"hostname":"test"}"#));
+    assert_eq!(exec_config.as_deref(), Some(r#"{"go":{"cmd":"bash"}}"#));
+    assert_eq!(image_type.as_deref(), Some("Server"));
+}
+
+#[test]
+fn parse_create_image_missing_name_fails() {
+    let result = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "image",
+        "--friendly-name",
+        "Terminal",
+    ]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_create_image_missing_friendly_name_fails() {
+    let result = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "image",
+        "--name",
+        "kasmweb/terminal:1.18.0",
+    ]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_create_image_enabled_defaults_to_true() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "image",
+        "--name",
+        "img",
+        "--friendly-name",
+        "Img",
+    ])
+    .unwrap();
+    let Command::Create(args) = cli.command else {
+        panic!("expected Create command");
+    };
+    let CreateResource::Image { enabled, .. } = args.resource else {
+        panic!("expected Image resource");
+    };
+    assert!(enabled);
+}
+
+#[test]
+fn parse_create_image_enabled_can_be_set_false() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "image",
+        "--name",
+        "img",
+        "--friendly-name",
+        "Img",
+        "--enabled",
+        "false",
+    ])
+    .unwrap();
+    let Command::Create(args) = cli.command else {
+        panic!("expected Create command");
+    };
+    let CreateResource::Image { enabled, .. } = args.resource else {
+        panic!("expected Image resource");
+    };
+    assert!(!enabled);
+}
+
+#[test]
+fn parse_create_image_src_defaults_to_container() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "image",
+        "--name",
+        "img",
+        "--friendly-name",
+        "Img",
+    ])
+    .unwrap();
+    let Command::Create(args) = cli.command else {
+        panic!("expected Create command");
+    };
+    let CreateResource::Image { image_src, .. } = args.resource else {
+        panic!("expected Image resource");
+    };
+    assert_eq!(image_src, "Container");
 }
 
 // --- Delete commands ---
