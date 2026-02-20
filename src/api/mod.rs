@@ -42,6 +42,16 @@ impl KasmClient {
 
         let agent: Agent = config_builder.build().into();
 
+        if context.insecure_skip_tls_verify {
+            eprintln!("WARNING: TLS certificate verification is disabled");
+        }
+
+        if context.server.starts_with("http://") && !context.insecure_skip_tls_verify {
+            eprintln!(
+                "WARNING: Server URL uses http:// — credentials will be sent in cleartext. Consider using https://."
+            );
+        }
+
         Ok(Self {
             agent,
             base_url: context.server.trim_end_matches('/').to_string(),
@@ -71,8 +81,12 @@ impl KasmClient {
             .map_err(|e| ApiError::Connection(e.to_string()))?;
 
         let status = response.status().as_u16();
-        let body_text = response
-            .into_body()
+
+        const MAX_BODY_SIZE: u64 = 128 * 1024 * 1024; // 128 MB
+        let mut body = response.into_body();
+        let body_text = body
+            .with_config()
+            .limit(MAX_BODY_SIZE)
             .read_to_string()
             .map_err(|e| ApiError::Connection(e.to_string()))?;
 
