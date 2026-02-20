@@ -149,7 +149,10 @@ proptest! {
     fn create_session_response_serde_roundtrip(resp in arb_create_session_response()) {
         let json = serde_json::to_string(&resp).unwrap();
         let deserialized: CreateSessionResponse = serde_json::from_str(&json).unwrap();
-        prop_assert_eq!(resp, deserialized);
+        // session_token is intentionally not serialized (it is a write-only server field),
+        // so it is always absent from outgoing JSON and becomes None after roundtrip.
+        let expected = CreateSessionResponse { session_token: None, ..resp };
+        prop_assert_eq!(expected, deserialized);
     }
 
     #[test]
