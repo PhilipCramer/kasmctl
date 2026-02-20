@@ -654,6 +654,7 @@ fn parse_config_set_context_with_insecure() {
         "--api-secret",
         "secret",
         "--insecure",
+        "true",
     ])
     .unwrap();
     let Command::Config(args) = cli.command else {

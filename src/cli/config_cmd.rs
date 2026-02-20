@@ -17,16 +17,16 @@ pub enum ConfigCommand {
         #[arg(long)]
         server: String,
 
-        /// API key
-        #[arg(long)]
+        /// API key (reads from KASMCTL_API_KEY env var if not provided)
+        #[arg(long, env = "KASMCTL_API_KEY")]
         api_key: String,
 
-        /// API key secret
-        #[arg(long)]
+        /// API key secret (reads from KASMCTL_API_SECRET env var if not provided)
+        #[arg(long, env = "KASMCTL_API_SECRET")]
         api_secret: String,
 
-        /// Skip TLS certificate verification
-        #[arg(long, default_value_t = false)]
+        /// Skip TLS certificate verification (for self-signed certificates)
+        #[arg(long, default_value_t = false, action = clap::ArgAction::Set)]
         insecure: bool,
     },
 
