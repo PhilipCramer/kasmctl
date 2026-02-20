@@ -64,7 +64,9 @@ fn handle_get(client: &KasmClient, resource: GetResource, format: &OutputFormat)
         GetResource::Sessions { filters } => {
             filters.validate().map_err(|e| anyhow::anyhow!(e))?;
             let mut sessions = client.get_kasms().context("failed to list sessions")?;
-            filters.apply(&mut sessions);
+            filters
+                .apply(&mut sessions)
+                .map_err(|e| anyhow::anyhow!(e))?;
             println!("{}", output::render_list(&sessions, format)?);
         }
         GetResource::Image { id } => {
@@ -216,7 +218,9 @@ fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> {
         StopResource::Sessions { filters, yes } => {
             filters.validate().map_err(|e| anyhow::anyhow!(e))?;
             let mut sessions = client.get_kasms().context("failed to list sessions")?;
-            filters.apply(&mut sessions);
+            filters
+                .apply(&mut sessions)
+                .map_err(|e| anyhow::anyhow!(e))?;
 
             if sessions.is_empty() {
                 eprintln!("No sessions match the given filters.");
@@ -280,7 +284,9 @@ fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()> {
         PauseResource::Sessions { filters, yes } => {
             filters.validate().map_err(|e| anyhow::anyhow!(e))?;
             let mut sessions = client.get_kasms().context("failed to list sessions")?;
-            filters.apply(&mut sessions);
+            filters
+                .apply(&mut sessions)
+                .map_err(|e| anyhow::anyhow!(e))?;
 
             if sessions.is_empty() {
                 eprintln!("No sessions match the given filters.");
@@ -348,7 +354,9 @@ fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<()> {
         ResumeResource::Sessions { filters, yes } => {
             filters.validate().map_err(|e| anyhow::anyhow!(e))?;
             let mut sessions = client.get_kasms().context("failed to list sessions")?;
-            filters.apply(&mut sessions);
+            filters
+                .apply(&mut sessions)
+                .map_err(|e| anyhow::anyhow!(e))?;
 
             if sessions.is_empty() {
                 eprintln!("No sessions match the given filters.");
