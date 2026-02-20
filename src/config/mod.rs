@@ -17,13 +17,13 @@ pub fn config_path() -> Result<PathBuf> {
 }
 
 pub fn load_config_from(path: &Path) -> Result<KasmConfig> {
-    if !path.exists() {
-        return Ok(KasmConfig::default());
+    match std::fs::read_to_string(path) {
+        Ok(contents) => serde_yaml::from_str(&contents)
+            .with_context(|| format!("failed to parse config file: {}", path.display())),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(KasmConfig::default()),
+        Err(e) => Err(anyhow::Error::new(e))
+            .with_context(|| format!("failed to read config file: {}", path.display())),
     }
-    let contents = std::fs::read_to_string(path)
-        .with_context(|| format!("failed to read config file: {}", path.display()))?;
-    serde_yaml::from_str(&contents)
-        .with_context(|| format!("failed to parse config file: {}", path.display()))
 }
 
 pub fn load_config() -> Result<KasmConfig> {
@@ -32,12 +32,44 @@ pub fn load_config() -> Result<KasmConfig> {
 
 pub fn save_config_to(path: &Path, config: &KasmConfig) -> Result<()> {
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("failed to create config directory: {}", parent.display()))?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            std::fs::DirBuilder::new()
+                .recursive(true)
+                .mode(0o700)
+                .create(parent)
+                .with_context(|| {
+                    format!("failed to create config directory: {}", parent.display())
+                })?;
+        }
+        #[cfg(not(unix))]
+        {
+            std::fs::create_dir_all(parent).with_context(|| {
+                format!("failed to create config directory: {}", parent.display())
+            })?;
+        }
     }
     let yaml = serde_yaml::to_string(config).context("failed to serialize config")?;
-    std::fs::write(path, yaml)
-        .with_context(|| format!("failed to write config file: {}", path.display()))
+    #[cfg(unix)]
+    {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600)
+            .open(path)
+            .with_context(|| format!("failed to write config file: {}", path.display()))?;
+        file.write_all(yaml.as_bytes())
+            .with_context(|| format!("failed to write config file: {}", path.display()))
+    }
+    #[cfg(not(unix))]
+    {
+        std::fs::write(path, yaml)
+            .with_context(|| format!("failed to write config file: {}", path.display()))
+    }
 }
 
 pub fn save_config(config: &KasmConfig) -> Result<()> {
@@ -143,5 +175,21 @@ mod tests {
     fn find_context_empty_list() {
         let result = find_context(&[], "anything");
         assert!(result.is_err());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn config_file_has_restricted_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.yaml");
+        save_config_to(&path, &KasmConfig::default()).unwrap();
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+        assert_eq!(
+            mode & 0o777,
+            0o600,
+            "config file should be mode 0600, got {:o}",
+            mode & 0o777
+        );
     }
 }
