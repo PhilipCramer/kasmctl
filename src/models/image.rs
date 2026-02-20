@@ -64,6 +64,9 @@ impl Resource for Image {
 }
 
 fn format_bytes(bytes: i64) -> String {
+    if bytes < 0 {
+        return bytes.to_string();
+    }
     const GB: i64 = 1_073_741_824;
     const MB: i64 = 1_048_576;
     if bytes >= GB && bytes % GB == 0 {
