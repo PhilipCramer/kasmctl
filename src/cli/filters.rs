@@ -1,4 +1,4 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use clap::Args;
 
@@ -63,11 +63,12 @@ impl SessionFilters {
     }
 
     /// Apply all filters to a list of sessions, removing non-matching entries.
-    pub fn apply(&self, sessions: &mut Vec<Session>) {
-        let idle_threshold = self.idle_for.as_ref().map(|dur| {
-            let secs = parse_duration(dur).expect("invalid --idle-for duration");
-            format_utc_minus(secs)
-        });
+    pub fn apply(&self, sessions: &mut Vec<Session>) -> Result<(), String> {
+        let idle_threshold = self
+            .idle_for
+            .as_ref()
+            .map(|dur| parse_duration(dur).map(format_utc_minus))
+            .transpose()?;
 
         sessions.retain(|s| {
             if let Some(ref status) = self.status {
@@ -132,6 +133,7 @@ impl SessionFilters {
 
             true
         });
+        Ok(())
     }
 }
 
@@ -214,9 +216,24 @@ fn parse_duration(s: &str) -> Result<u64, String> {
                     .map_err(|_| format!("invalid number in duration: {s:?}"))?;
                 current.clear();
                 match ch {
-                    'd' => total += n * 86400,
-                    'h' => total += n * 3600,
-                    'm' => total += n * 60,
+                    'd' => {
+                        total = n
+                            .checked_mul(86400)
+                            .and_then(|v| total.checked_add(v))
+                            .ok_or_else(|| format!("duration overflow in {s:?}"))?;
+                    }
+                    'h' => {
+                        total = n
+                            .checked_mul(3600)
+                            .and_then(|v| total.checked_add(v))
+                            .ok_or_else(|| format!("duration overflow in {s:?}"))?;
+                    }
+                    'm' => {
+                        total = n
+                            .checked_mul(60)
+                            .and_then(|v| total.checked_add(v))
+                            .ok_or_else(|| format!("duration overflow in {s:?}"))?;
+                    }
                     _ => unreachable!(),
                 }
             }
@@ -241,7 +258,7 @@ fn parse_duration(s: &str) -> Result<u64, String> {
 fn format_utc_minus(secs: u64) -> String {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .expect("system clock before UNIX epoch");
+        .unwrap_or(Duration::ZERO);
     let target = now.as_secs().saturating_sub(secs);
 
     // Convert epoch seconds to date-time components (simplified UTC-only algorithm).
@@ -274,6 +291,7 @@ fn epoch_to_datetime(epoch: u64) -> (u64, u64, u64, u64, u64, u64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
 
     #[test]
     fn parse_duration_minutes() {
@@ -345,7 +363,7 @@ mod tests {
             make_session(|s| s.operational_status = Some("stopped".into())),
             make_session(|s| s.operational_status = Some("RUNNING".into())),
         ];
-        filters.apply(&mut sessions);
+        filters.apply(&mut sessions).unwrap();
         assert_eq!(sessions.len(), 2);
         assert!(
             sessions
@@ -364,7 +382,7 @@ mod tests {
             make_session(|s| s.image_id = Some("img-1".into())),
             make_session(|s| s.image_id = Some("img-2".into())),
         ];
-        filters.apply(&mut sessions);
+        filters.apply(&mut sessions).unwrap();
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].image_id.as_deref(), Some("img-1"));
     }
@@ -379,7 +397,7 @@ mod tests {
             make_session(|s| s.user_id = Some("user-1".into())),
             make_session(|s| s.user_id = Some("user-2".into())),
         ];
-        filters.apply(&mut sessions);
+        filters.apply(&mut sessions).unwrap();
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].user_id.as_deref(), Some("user-1"));
     }
@@ -394,7 +412,7 @@ mod tests {
             make_session(|s| s.hostname = Some("host-1".into())),
             make_session(|s| s.hostname = Some("host-2".into())),
         ];
-        filters.apply(&mut sessions);
+        filters.apply(&mut sessions).unwrap();
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].hostname.as_deref(), Some("host-1"));
     }
@@ -409,7 +427,7 @@ mod tests {
             make_session(|s| s.created_date = Some("2025-01-15 12:00:00".into())),
             make_session(|s| s.created_date = Some("2025-03-01 12:00:00".into())),
         ];
-        filters.apply(&mut sessions);
+        filters.apply(&mut sessions).unwrap();
         assert_eq!(sessions.len(), 1);
         assert_eq!(
             sessions[0].created_date.as_deref(),
@@ -427,7 +445,7 @@ mod tests {
             make_session(|s| s.created_date = Some("2025-01-15 12:00:00".into())),
             make_session(|s| s.created_date = Some("2025-03-01 12:00:00".into())),
         ];
-        filters.apply(&mut sessions);
+        filters.apply(&mut sessions).unwrap();
         assert_eq!(sessions.len(), 1);
         assert_eq!(
             sessions[0].created_date.as_deref(),
@@ -445,7 +463,7 @@ mod tests {
             make_session(|s| s.keepalive_date = Some("2025-06-01 10:00:00".into())),
             make_session(|s| s.keepalive_date = Some("2025-06-01 14:00:00".into())),
         ];
-        filters.apply(&mut sessions);
+        filters.apply(&mut sessions).unwrap();
         assert_eq!(sessions.len(), 1);
         assert_eq!(
             sessions[0].keepalive_date.as_deref(),
@@ -474,7 +492,7 @@ mod tests {
                 s.image_id = Some("img-1".into());
             }),
         ];
-        filters.apply(&mut sessions);
+        filters.apply(&mut sessions).unwrap();
         assert_eq!(sessions.len(), 1);
         assert_eq!(sessions[0].operational_status.as_deref(), Some("running"));
         assert_eq!(sessions[0].image_id.as_deref(), Some("img-1"));
@@ -488,7 +506,7 @@ mod tests {
             make_session(|_| {}),
             make_session(|_| {}),
         ];
-        filters.apply(&mut sessions);
+        filters.apply(&mut sessions).unwrap();
         assert_eq!(sessions.len(), 3);
     }
 
@@ -792,5 +810,33 @@ mod tests {
         let mut images = vec![make_image(|_| {}), make_image(|_| {}), make_image(|_| {})];
         filters.apply(&mut images);
         assert_eq!(images.len(), 3);
+    }
+
+    proptest! {
+        #[test]
+        fn epoch_to_datetime_produces_valid_components(epoch in 0u64..=253_402_300_799u64) {
+            let (year, month, day, hour, min, sec) = epoch_to_datetime(epoch);
+            prop_assert!(year >= 1970 && year <= 9999);
+            prop_assert!(month >= 1 && month <= 12);
+            prop_assert!(day >= 1 && day <= 31);
+            prop_assert!(hour <= 23);
+            prop_assert!(min <= 59);
+            prop_assert!(sec <= 59);
+        }
+    }
+
+    #[test]
+    fn apply_with_invalid_idle_for_returns_error() {
+        let filters = SessionFilters {
+            idle_for: Some("30s".into()),
+            ..Default::default()
+        };
+        let mut sessions = vec![make_session(|_| {})];
+        assert!(filters.apply(&mut sessions).is_err());
+    }
+
+    #[test]
+    fn parse_duration_rejects_overflow() {
+        assert!(parse_duration("999999999999999999d").is_err());
     }
 }
