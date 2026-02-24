@@ -1,6 +1,16 @@
 use serde::{Deserialize, Serialize};
 
+use crate::output::display::{relative_age, short_id};
 use crate::resource::Resource;
+
+/// Nested image metadata returned alongside a session.
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SessionImage {
+    #[serde(default)]
+    pub friendly_name: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+}
 
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Session {
@@ -9,6 +19,8 @@ pub struct Session {
     pub user_id: Option<String>,
     #[serde(default)]
     pub image_id: Option<String>,
+    #[serde(default)]
+    pub image: Option<SessionImage>,
     #[serde(default)]
     pub username: Option<String>,
     #[serde(default)]
@@ -39,26 +51,45 @@ impl Resource for Session {
     }
 
     fn table_headers() -> Vec<&'static str> {
-        vec!["KASM ID", "STATUS", "IMAGE", "USER", "CREATED"]
+        vec!["KASM ID", "STATUS", "IMAGE", "USER", "AGE"]
     }
 
     fn table_row(&self) -> Vec<String> {
+        let image_display = self
+            .image
+            .as_ref()
+            .and_then(|i| i.friendly_name.as_deref().or(i.name.as_deref()))
+            .or(self.image_id.as_deref())
+            .unwrap_or_default()
+            .to_string();
+
         vec![
-            self.kasm_id.clone(),
+            short_id(&self.kasm_id).to_string(),
             self.operational_status.clone().unwrap_or_default(),
-            self.image_id.clone().unwrap_or_default(),
+            image_display,
             self.username.clone().unwrap_or_default(),
-            self.created_date.clone().unwrap_or_default(),
+            self.created_date
+                .as_deref()
+                .map(relative_age)
+                .unwrap_or_default(),
         ]
     }
 
     fn table_detail(&self) -> Vec<(&'static str, String)> {
+        let image_friendly = self
+            .image
+            .as_ref()
+            .and_then(|i| i.friendly_name.as_deref().or(i.name.as_deref()))
+            .unwrap_or_default()
+            .to_string();
+
         vec![
             ("KASM ID", self.kasm_id.clone()),
             (
                 "STATUS",
                 self.operational_status.clone().unwrap_or_default(),
             ),
+            ("IMAGE", image_friendly),
             ("IMAGE ID", self.image_id.clone().unwrap_or_default()),
             ("USERNAME", self.username.clone().unwrap_or_default()),
             ("USER ID", self.user_id.clone().unwrap_or_default()),
