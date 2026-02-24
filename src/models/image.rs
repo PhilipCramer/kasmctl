@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::output::display::short_id;
 use crate::resource::Resource;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -27,13 +28,21 @@ impl Resource for Image {
     }
 
     fn table_headers() -> Vec<&'static str> {
-        vec!["IMAGE ID", "NAME", "ENABLED", "CORES", "MEMORY"]
+        vec![
+            "IMAGE ID",
+            "NAME",
+            "DOCKER IMAGE",
+            "ENABLED",
+            "CORES",
+            "MEMORY",
+        ]
     }
 
     fn table_row(&self) -> Vec<String> {
         vec![
-            self.image_id.clone(),
+            short_id(&self.image_id).to_string(),
             self.friendly_name.clone().unwrap_or_default(),
+            self.name.clone().unwrap_or_default(),
             self.enabled.map(|v| v.to_string()).unwrap_or_default(),
             self.cores.map(|v| v.to_string()).unwrap_or_default(),
             self.memory.map(format_bytes).unwrap_or_default(),

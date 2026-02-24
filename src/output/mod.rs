@@ -1,3 +1,4 @@
+pub mod display;
 pub mod json;
 pub mod table;
 pub mod yaml;

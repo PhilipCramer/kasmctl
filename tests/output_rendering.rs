@@ -1,5 +1,6 @@
 use kasmctl::models::image::Image;
-use kasmctl::models::session::Session;
+use kasmctl::models::session::{Session, SessionImage};
+use kasmctl::output::display::short_id;
 use kasmctl::output::{self, OutputFormat};
 use proptest::prelude::*;
 
@@ -50,19 +51,32 @@ fn arb_images() -> impl Strategy<Value = Vec<Image>> {
     prop::collection::vec(arb_image(), 0..10)
 }
 
+fn arb_option_session_image() -> impl Strategy<Value = Option<SessionImage>> {
+    prop_oneof![
+        Just(None),
+        (arb_option_string(), arb_option_string()).prop_map(|(friendly_name, name)| Some(
+            SessionImage {
+                friendly_name,
+                name
+            }
+        ))
+    ]
+}
+
 fn arb_session() -> impl Strategy<Value = Session> {
     (
         (
             "[a-zA-Z0-9-]{1,36}",
             arb_option_string(),
             arb_option_string(),
-            arb_option_string(),
+            arb_option_session_image(),
             arb_option_string(),
             arb_option_string(),
             arb_option_string(),
             arb_option_string(),
         ),
         (
+            arb_option_string(),
             arb_option_string(),
             arb_option_string(),
             arb_option_string(),
@@ -73,22 +87,22 @@ fn arb_session() -> impl Strategy<Value = Session> {
     )
         .prop_map(
             |(
+                (kasm_id, user_id, image_id, image, username, share_id, kasm_url, created_date),
                 (
-                    kasm_id,
-                    user_id,
-                    image_id,
-                    username,
-                    share_id,
-                    kasm_url,
-                    created_date,
                     expiration_date,
+                    hostname,
+                    server_id,
+                    keepalive_date,
+                    start_date,
+                    operational_status,
+                    container_id,
                 ),
-                (hostname, server_id, keepalive_date, start_date, operational_status, container_id),
             )| {
                 Session {
                     kasm_id,
                     user_id,
                     image_id,
+                    image,
                     username,
                     share_id,
                     kasm_url,
@@ -148,7 +162,7 @@ proptest! {
     fn table_detail_contains_all_labels(session in arb_session()) {
         let output = output::render_one(&session, &OutputFormat::Table).unwrap();
         for label in &[
-            "KASM ID", "STATUS", "IMAGE ID", "USERNAME", "USER ID",
+            "KASM ID", "STATUS", "IMAGE", "IMAGE ID", "USERNAME", "USER ID",
             "HOSTNAME", "SERVER ID", "CONTAINER ID",
             "SHARE ID", "KASM URL", "STARTED", "KEEPALIVE", "CREATED", "EXPIRES",
         ] {
@@ -167,9 +181,9 @@ proptest! {
         let output = output::render_list(&sessions, &OutputFormat::Table).unwrap();
         for session in &sessions {
             prop_assert!(
-                output.contains(&session.kasm_id),
-                "missing kasm_id: {}",
-                session.kasm_id
+                output.contains(short_id(&session.kasm_id)),
+                "missing short kasm_id: {}",
+                short_id(&session.kasm_id)
             );
         }
     }
@@ -178,9 +192,7 @@ proptest! {
 #[test]
 fn table_empty_list_has_headers_only() {
     let output = output::render_list::<Session>(&[], &OutputFormat::Table).unwrap();
-    assert!(output.contains("KASM ID"));
-    // No data rows means no UUIDs — just headers and borders
-    assert!(!output.contains("running"));
+    assert_eq!(output, "No sessions found.");
 }
 
 // --- Detail view rendering ---
@@ -191,6 +203,7 @@ fn table_detail_contains_field_values() {
         kasm_id: "abc-123".into(),
         user_id: Some("user-456".into()),
         image_id: Some("img-789".into()),
+        image: None,
         username: Some("alice".into()),
         share_id: Some("share-001".into()),
         kasm_url: Some("https://kasm.example.com/session".into()),
@@ -221,6 +234,7 @@ fn table_detail_handles_none_fields() {
         kasm_id: "test-id".into(),
         user_id: None,
         image_id: None,
+        image: None,
         username: None,
         share_id: None,
         kasm_url: None,
@@ -248,6 +262,7 @@ fn table_list_still_uses_compact_headers() {
         kasm_id: "abc-123".into(),
         user_id: Some("user-456".into()),
         image_id: Some("img-789".into()),
+        image: None,
         username: Some("alice".into()),
         share_id: Some("share-001".into()),
         kasm_url: Some("https://kasm.example.com/session".into()),
@@ -266,7 +281,7 @@ fn table_list_still_uses_compact_headers() {
     assert!(output.contains("STATUS"));
     assert!(output.contains("IMAGE"));
     assert!(output.contains("USER"));
-    assert!(output.contains("CREATED"));
+    assert!(output.contains("AGE"));
     // List view should NOT contain detail-only labels
     assert!(!output.contains("SHARE ID"));
     assert!(!output.contains("EXPIRES"));
@@ -278,6 +293,7 @@ fn json_render_one_is_pretty_printed() {
         kasm_id: "test-id".into(),
         user_id: None,
         image_id: None,
+        image: None,
         username: None,
         share_id: None,
         kasm_url: None,
@@ -326,9 +342,9 @@ proptest! {
         let output = output::render_list(&images, &OutputFormat::Table).unwrap();
         for image in &images {
             prop_assert!(
-                output.contains(&image.image_id),
-                "missing image_id: {}",
-                image.image_id
+                output.contains(short_id(&image.image_id)),
+                "missing short image_id: {}",
+                short_id(&image.image_id)
             );
         }
     }
@@ -343,8 +359,73 @@ proptest! {
 #[test]
 fn image_table_empty_list_has_headers_only() {
     let output = output::render_list::<Image>(&[], &OutputFormat::Table).unwrap();
-    assert!(output.contains("IMAGE ID"));
-    assert!(output.contains("NAME"));
-    assert!(output.contains("ENABLED"));
-    assert!(!output.contains("Ubuntu"));
+    assert_eq!(output, "No images found.");
+}
+
+// --- Footer count tests ---
+
+#[test]
+fn table_list_includes_footer_count_singular() {
+    let session = Session {
+        kasm_id: "abc-123".into(),
+        user_id: None,
+        image_id: None,
+        image: None,
+        username: None,
+        share_id: None,
+        kasm_url: None,
+        created_date: None,
+        expiration_date: None,
+        hostname: None,
+        server_id: None,
+        keepalive_date: None,
+        start_date: None,
+        operational_status: Some("running".into()),
+        container_id: None,
+    };
+    let output = output::render_list(&[session], &OutputFormat::Table).unwrap();
+    assert!(output.ends_with("\n1 session"), "output was: {output}");
+}
+
+#[test]
+fn table_list_includes_footer_count_plural() {
+    let make_session = |id: &str| Session {
+        kasm_id: id.into(),
+        user_id: None,
+        image_id: None,
+        image: None,
+        username: None,
+        share_id: None,
+        kasm_url: None,
+        created_date: None,
+        expiration_date: None,
+        hostname: None,
+        server_id: None,
+        keepalive_date: None,
+        start_date: None,
+        operational_status: None,
+        container_id: None,
+    };
+    let output = output::render_list(
+        &[make_session("s1"), make_session("s2")],
+        &OutputFormat::Table,
+    )
+    .unwrap();
+    assert!(output.ends_with("\n2 sessions"), "output was: {output}");
+}
+
+#[test]
+fn image_table_list_includes_footer_count() {
+    let image = Image {
+        image_id: "img-001".into(),
+        friendly_name: Some("Ubuntu Desktop".into()),
+        name: None,
+        description: None,
+        enabled: Some(true),
+        cores: None,
+        memory: None,
+        image_src: None,
+    };
+    let output = output::render_list(&[image], &OutputFormat::Table).unwrap();
+    assert!(output.ends_with("\n1 image"), "output was: {output}");
 }

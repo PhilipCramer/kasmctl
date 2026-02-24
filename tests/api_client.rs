@@ -60,6 +60,38 @@ fn get_kasms_success() {
 }
 
 #[test]
+fn get_kasms_deserializes_nested_image() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/public/get_kasms")
+        .with_status(200)
+        .with_body(
+            r#"{"kasms":[{
+                "kasm_id":"abc-123",
+                "operational_status":"running",
+                "image_id":"img-001",
+                "image": {
+                    "friendly_name": "Ubuntu Desktop",
+                    "name": "kasmweb/ubuntu-focal:1.14.0"
+                }
+            }]}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let sessions = client.get_kasms().unwrap();
+
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(sessions[0].kasm_id, "abc-123");
+    let img = sessions[0].image.as_ref().expect("image should be present");
+    assert_eq!(img.friendly_name.as_deref(), Some("Ubuntu Desktop"));
+    assert_eq!(img.name.as_deref(), Some("kasmweb/ubuntu-focal:1.14.0"));
+
+    mock.assert();
+}
+
+#[test]
 fn get_kasms_empty_list() {
     let mut server = mockito::Server::new();
     let mock = server

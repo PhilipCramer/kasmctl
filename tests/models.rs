@@ -1,5 +1,6 @@
 use kasmctl::models::image::Image;
-use kasmctl::models::session::{CreateSessionResponse, Session};
+use kasmctl::models::session::{CreateSessionResponse, Session, SessionImage};
+use kasmctl::output::display::short_id;
 use kasmctl::resource::Resource;
 use proptest::prelude::*;
 
@@ -57,19 +58,32 @@ fn arb_image() -> impl Strategy<Value = Image> {
         )
 }
 
+fn arb_option_session_image() -> impl Strategy<Value = Option<SessionImage>> {
+    prop_oneof![
+        Just(None),
+        (arb_option_string(), arb_option_string()).prop_map(|(friendly_name, name)| Some(
+            SessionImage {
+                friendly_name,
+                name
+            }
+        ))
+    ]
+}
+
 fn arb_session() -> impl Strategy<Value = Session> {
     (
         (
             "[a-zA-Z0-9-]{1,36}",
             arb_option_string(),
             arb_option_string(),
-            arb_option_string(),
+            arb_option_session_image(),
             arb_option_string(),
             arb_option_string(),
             arb_option_string(),
             arb_option_string(),
         ),
         (
+            arb_option_string(),
             arb_option_string(),
             arb_option_string(),
             arb_option_string(),
@@ -80,22 +94,22 @@ fn arb_session() -> impl Strategy<Value = Session> {
     )
         .prop_map(
             |(
+                (kasm_id, user_id, image_id, image, username, share_id, kasm_url, created_date),
                 (
-                    kasm_id,
-                    user_id,
-                    image_id,
-                    username,
-                    share_id,
-                    kasm_url,
-                    created_date,
                     expiration_date,
+                    hostname,
+                    server_id,
+                    keepalive_date,
+                    start_date,
+                    operational_status,
+                    container_id,
                 ),
-                (hostname, server_id, keepalive_date, start_date, operational_status, container_id),
             )| {
                 Session {
                     kasm_id,
                     user_id,
                     image_id,
+                    image,
                     username,
                     share_id,
                     kasm_url,
@@ -165,7 +179,7 @@ proptest! {
     #[test]
     fn table_row_first_column_is_kasm_id(session in arb_session()) {
         let row = session.table_row();
-        prop_assert_eq!(&row[0], &session.kasm_id);
+        prop_assert_eq!(&row[0], short_id(&session.kasm_id));
     }
 
     #[test]
@@ -174,7 +188,9 @@ proptest! {
         if session.operational_status.is_none() {
             prop_assert_eq!(&row[1], "");
         }
-        if session.image_id.is_none() {
+        if session.image.as_ref().and_then(|i| i.friendly_name.as_deref().or(i.name.as_deref())).is_none()
+            && session.image_id.is_none()
+        {
             prop_assert_eq!(&row[2], "");
         }
         if session.username.is_none() {
@@ -264,7 +280,7 @@ proptest! {
     #[test]
     fn image_table_row_first_column_is_image_id(image in arb_image()) {
         let row = image.table_row();
-        prop_assert_eq!(&row[0], &image.image_id);
+        prop_assert_eq!(&row[0], short_id(&image.image_id));
     }
 
     #[test]
@@ -273,14 +289,17 @@ proptest! {
         if image.friendly_name.is_none() {
             prop_assert_eq!(&row[1], "");
         }
-        if image.enabled.is_none() {
+        if image.name.is_none() {
             prop_assert_eq!(&row[2], "");
         }
-        if image.cores.is_none() {
+        if image.enabled.is_none() {
             prop_assert_eq!(&row[3], "");
         }
-        if image.memory.is_none() {
+        if image.cores.is_none() {
             prop_assert_eq!(&row[4], "");
+        }
+        if image.memory.is_none() {
+            prop_assert_eq!(&row[5], "");
         }
     }
 
@@ -336,7 +355,7 @@ fn resource_name_is_session() {
 fn table_headers_are_correct() {
     assert_eq!(
         Session::table_headers(),
-        vec!["KASM ID", "STATUS", "IMAGE", "USER", "CREATED"]
+        vec!["KASM ID", "STATUS", "IMAGE", "USER", "AGE"]
     );
 }
 
@@ -347,6 +366,7 @@ fn table_detail_has_all_labels() {
     let expected_labels = vec![
         "KASM ID",
         "STATUS",
+        "IMAGE",
         "IMAGE ID",
         "USERNAME",
         "USER ID",
@@ -364,6 +384,7 @@ fn table_detail_has_all_labels() {
         kasm_id: "test-id".into(),
         user_id: None,
         image_id: None,
+        image: None,
         username: None,
         share_id: None,
         kasm_url: None,
@@ -387,6 +408,10 @@ fn table_detail_contains_field_values() {
         kasm_id: "abc-123".into(),
         user_id: Some("user-456".into()),
         image_id: Some("img-789".into()),
+        image: Some(SessionImage {
+            friendly_name: Some("Ubuntu Desktop".into()),
+            name: None,
+        }),
         username: Some("alice".into()),
         share_id: Some("share-001".into()),
         kasm_url: Some("https://kasm.example.com/session".into()),
@@ -409,6 +434,7 @@ fn table_detail_contains_field_values() {
     };
     assert_eq!(lookup("KASM ID"), "abc-123");
     assert_eq!(lookup("STATUS"), "running");
+    assert_eq!(lookup("IMAGE"), "Ubuntu Desktop");
     assert_eq!(lookup("IMAGE ID"), "img-789");
     assert_eq!(lookup("USERNAME"), "alice");
     assert_eq!(lookup("USER ID"), "user-456");
@@ -441,7 +467,14 @@ fn image_resource_name_is_image() {
 fn image_table_headers_are_correct() {
     assert_eq!(
         Image::table_headers(),
-        vec!["IMAGE ID", "NAME", "ENABLED", "CORES", "MEMORY"]
+        vec![
+            "IMAGE ID",
+            "NAME",
+            "DOCKER IMAGE",
+            "ENABLED",
+            "CORES",
+            "MEMORY"
+        ]
     );
 }
 
@@ -524,7 +557,7 @@ fn image_memory_format_bytes_gb() {
         image_src: None,
     };
     let row = image.table_row();
-    assert_eq!(row[4], "4GB");
+    assert_eq!(row[5], "4GB");
 }
 
 #[test]
@@ -540,7 +573,7 @@ fn image_memory_format_bytes_mb() {
         image_src: None,
     };
     let row = image.table_row();
-    assert_eq!(row[4], "500MB");
+    assert_eq!(row[5], "500MB");
 }
 
 #[test]
@@ -556,5 +589,5 @@ fn image_memory_format_bytes_raw() {
         image_src: None,
     };
     let row = image.table_row();
-    assert_eq!(row[4], "12345");
+    assert_eq!(row[5], "12345");
 }
