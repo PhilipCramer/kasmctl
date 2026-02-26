@@ -867,6 +867,146 @@ fn get_zones_empty_list() {
     mock.assert();
 }
 
+// ===================== get_agents =====================
+
+#[test]
+fn get_agents_success() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/get_agents")
+        .with_status(200)
+        .with_body(
+            r#"{"agents":[
+                {"agent_id":"agent-001","hostname":"kasm-agent-1","status":"running","enabled":true},
+                {"agent_id":"agent-002","hostname":"kasm-agent-2","status":"stopped","enabled":false}
+            ]}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let agents = client.get_agents().unwrap();
+
+    assert_eq!(agents.len(), 2);
+    assert_eq!(agents[0].agent_id, "agent-001");
+    assert_eq!(agents[0].hostname.as_deref(), Some("kasm-agent-1"));
+    assert_eq!(agents[0].enabled, Some(true));
+    assert_eq!(agents[1].agent_id, "agent-002");
+    assert_eq!(agents[1].enabled, Some(false));
+
+    mock.assert();
+}
+
+#[test]
+fn get_agents_empty_list() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/get_agents")
+        .with_status(200)
+        .with_body(r#"{"agents":[]}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let agents = client.get_agents().unwrap();
+
+    assert!(agents.is_empty());
+
+    mock.assert();
+}
+
+// ===================== update_agent =====================
+
+#[test]
+fn update_agent_success() {
+    use kasmctl::api::agents::UpdateAgentRequest;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/update_agent")
+        .with_status(200)
+        .with_body(
+            r#"{"agent":{"agent_id":"agent-001","hostname":"kasm-agent-1","enabled":false}}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let req = UpdateAgentRequest {
+        agent_id: "agent-001".into(),
+        enabled: Some(false),
+        cores_override: None,
+        memory_override: None,
+        gpus_override: None,
+        auto_prune_images: None,
+    };
+    let agent = client.update_agent(&req).unwrap();
+
+    assert_eq!(agent.agent_id, "agent-001");
+    assert_eq!(agent.enabled, Some(false));
+
+    mock.assert();
+}
+
+#[test]
+fn update_agent_sends_target_agent_wrapper() {
+    use kasmctl::api::agents::UpdateAgentRequest;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/update_agent")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"target_agent":{"agent_id":"agent-001"}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{"agent":{"agent_id":"agent-001"}}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let req = UpdateAgentRequest {
+        agent_id: "agent-001".into(),
+        enabled: None,
+        cores_override: None,
+        memory_override: None,
+        gpus_override: None,
+        auto_prune_images: None,
+    };
+    client.update_agent(&req).unwrap();
+
+    mock.assert();
+}
+
+#[test]
+fn update_agent_omits_none_fields() {
+    use kasmctl::api::agents::UpdateAgentRequest;
+
+    let mut server = mockito::Server::new();
+    // Only agent_id should be in target_agent — no enabled, cores_override, etc.
+    let mock = server
+        .mock("POST", "/api/admin/update_agent")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"target_agent":{"agent_id":"agent-001"}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{"agent":{"agent_id":"agent-001"}}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let req = UpdateAgentRequest {
+        agent_id: "agent-001".into(),
+        enabled: None,
+        cores_override: None,
+        memory_override: None,
+        gpus_override: None,
+        auto_prune_images: None,
+    };
+    client.update_agent(&req).unwrap();
+
+    mock.assert();
+}
+
 // --- URL construction ---
 
 #[test]

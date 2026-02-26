@@ -1,3 +1,4 @@
+use kasmctl::models::agent::Agent;
 use kasmctl::models::image::Image;
 use kasmctl::models::session::{Session, SessionImage};
 use kasmctl::models::zone::Zone;
@@ -524,4 +525,101 @@ fn zone_table_list_includes_footer_count() {
     };
     let output = output::render_list(&[zone], &OutputFormat::Table).unwrap();
     assert!(output.ends_with("\n1 zone"), "output was: {output}");
+}
+
+// ===================== Agent output rendering =====================
+
+fn arb_agent() -> impl Strategy<Value = Agent> {
+    (
+        "[a-zA-Z0-9-]{1,36}",
+        prop_oneof![Just(None), "[a-zA-Z0-9 _-]{0,50}".prop_map(Some)],
+        prop_oneof![Just(None), "[a-zA-Z0-9 _-]{0,50}".prop_map(Some)],
+        prop_oneof![Just(None), "[a-zA-Z0-9 _-]{0,50}".prop_map(Some)],
+        prop_oneof![Just(None), "[a-zA-Z0-9 _-]{0,50}".prop_map(Some)],
+        prop_oneof![Just(None), any::<bool>().prop_map(Some)],
+        prop_oneof![Just(None), (1.0..16.0f64).prop_map(Some)],
+        prop_oneof![Just(None), (1i64..10_000_000_000i64).prop_map(Some)],
+    )
+        .prop_map(
+            |(agent_id, server_id, hostname, status, zone_id, enabled, cores, memory)| Agent {
+                agent_id,
+                server_id,
+                hostname,
+                status,
+                zone_id,
+                enabled,
+                cores,
+                memory,
+                gpus: None,
+                cores_override: None,
+                memory_override: None,
+                gpus_override: None,
+                auto_prune_images: None,
+            },
+        )
+}
+
+fn arb_agents() -> impl Strategy<Value = Vec<Agent>> {
+    prop::collection::vec(arb_agent(), 0..10)
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(50))]
+
+    #[test]
+    fn agent_json_render_list_produces_valid_json(agents in arb_agents()) {
+        let output = output::render_list(&agents, &OutputFormat::Json).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        prop_assert!(parsed.is_array());
+        prop_assert_eq!(parsed.as_array().unwrap().len(), agents.len());
+    }
+
+    #[test]
+    fn agent_yaml_render_list_produces_valid_yaml(agents in arb_agents()) {
+        let output = output::render_list(&agents, &OutputFormat::Yaml).unwrap();
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&output).unwrap();
+        prop_assert!(parsed.is_sequence());
+    }
+
+    #[test]
+    fn agent_json_render_one_produces_object(agent in arb_agent()) {
+        let output = output::render_one(&agent, &OutputFormat::Json).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        prop_assert!(parsed.is_object());
+    }
+
+    #[test]
+    fn agent_table_list_contains_all_agent_ids(agents in arb_agents()) {
+        let output = output::render_list(&agents, &OutputFormat::Table).unwrap();
+        for agent in &agents {
+            prop_assert!(
+                output.contains(short_id(&agent.agent_id)),
+                "missing short agent_id: {}",
+                short_id(&agent.agent_id)
+            );
+        }
+    }
+
+    #[test]
+    fn agent_table_detail_contains_agent_id(agent in arb_agent()) {
+        let output = output::render_one(&agent, &OutputFormat::Table).unwrap();
+        prop_assert!(output.contains(&agent.agent_id));
+    }
+}
+
+#[test]
+fn agent_table_empty_list_has_headers_only() {
+    let output = output::render_list::<Agent>(&[], &OutputFormat::Table).unwrap();
+    assert_eq!(output, "No agents found.");
+}
+
+#[test]
+fn agent_table_list_includes_footer_count() {
+    let agent = Agent {
+        agent_id: "agent-001".into(),
+        hostname: Some("kasm-agent-1".into()),
+        ..Default::default()
+    };
+    let output = output::render_list(&[agent], &OutputFormat::Table).unwrap();
+    assert!(output.ends_with("\n1 agent"), "output was: {output}");
 }

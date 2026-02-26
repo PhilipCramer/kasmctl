@@ -1,3 +1,4 @@
+use kasmctl::models::agent::Agent;
 use kasmctl::models::image::Image;
 use kasmctl::models::session::{CreateSessionResponse, Session, SessionImage};
 use kasmctl::models::zone::Zone;
@@ -811,5 +812,243 @@ fn zone_table_detail_contains_field_values() {
 fn deserialize_missing_required_zone_id_fails() {
     let json = r#"{"zone_name": "us-east"}"#;
     let result = serde_json::from_str::<Zone>(json);
+    assert!(result.is_err());
+}
+
+// ===================== Agent =====================
+
+fn arb_agent() -> impl Strategy<Value = Agent> {
+    (
+        (
+            "[a-zA-Z0-9-]{1,36}",
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_bool(),
+            arb_option_f64(),
+        ),
+        (
+            arb_option_memory(),
+            arb_option_f64(),
+            arb_option_f64(),
+            arb_option_memory(),
+            arb_option_f64(),
+            arb_option_string(),
+        ),
+    )
+        .prop_map(
+            |(
+                (agent_id, server_id, hostname, status, zone_id, enabled, cores),
+                (memory, gpus, cores_override, memory_override, gpus_override, auto_prune_images),
+            )| {
+                Agent {
+                    agent_id,
+                    server_id,
+                    hostname,
+                    status,
+                    zone_id,
+                    enabled,
+                    cores,
+                    memory,
+                    gpus,
+                    cores_override,
+                    memory_override,
+                    gpus_override,
+                    auto_prune_images,
+                }
+            },
+        )
+}
+
+proptest! {
+    #[test]
+    fn agent_serde_roundtrip(agent in arb_agent()) {
+        let json = serde_json::to_string(&agent).unwrap();
+        let deserialized: Agent = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(agent, deserialized);
+    }
+
+    #[test]
+    fn agent_table_row_length_matches_headers(agent in arb_agent()) {
+        let headers = Agent::table_headers();
+        let row = agent.table_row();
+        prop_assert_eq!(row.len(), headers.len());
+    }
+
+    #[test]
+    fn agent_table_row_first_column_is_agent_id(agent in arb_agent()) {
+        let row = agent.table_row();
+        prop_assert_eq!(&row[0], short_id(&agent.agent_id));
+    }
+
+    #[test]
+    fn agent_table_row_none_fields_become_empty_string(agent in arb_agent()) {
+        let row = agent.table_row();
+        if agent.hostname.is_none() {
+            prop_assert_eq!(&row[1], "");
+        }
+        if agent.status.is_none() {
+            prop_assert_eq!(&row[2], "");
+        }
+        if agent.enabled.is_none() {
+            prop_assert_eq!(&row[3], "");
+        }
+        if agent.cores.is_none() {
+            prop_assert_eq!(&row[4], "");
+        }
+        if agent.memory.is_none() {
+            prop_assert_eq!(&row[5], "");
+        }
+    }
+
+    #[test]
+    fn agent_table_detail_contains_agent_id(agent in arb_agent()) {
+        let detail = agent.table_detail();
+        let entry = detail.iter().find(|(k, _)| *k == "AGENT ID");
+        prop_assert!(entry.is_some());
+        prop_assert_eq!(&entry.unwrap().1, &agent.agent_id);
+    }
+
+    #[test]
+    fn agent_table_detail_none_fields_become_empty_string(agent in arb_agent()) {
+        let detail = agent.table_detail();
+        let lookup = |label: &str| detail.iter().find(|(k, _)| *k == label).map(|(_, v)| v.clone());
+        if agent.server_id.is_none() {
+            let val = lookup("SERVER ID");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if agent.hostname.is_none() {
+            let val = lookup("HOSTNAME");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if agent.status.is_none() {
+            let val = lookup("STATUS");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if agent.zone_id.is_none() {
+            let val = lookup("ZONE ID");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if agent.enabled.is_none() {
+            let val = lookup("ENABLED");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if agent.cores.is_none() {
+            let val = lookup("CORES");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if agent.memory.is_none() {
+            let val = lookup("MEMORY");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if agent.gpus.is_none() {
+            let val = lookup("GPUS");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if agent.cores_override.is_none() {
+            let val = lookup("CORES OVERRIDE");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if agent.memory_override.is_none() {
+            let val = lookup("MEMORY OVERRIDE");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if agent.gpus_override.is_none() {
+            let val = lookup("GPUS OVERRIDE");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if agent.auto_prune_images.is_none() {
+            let val = lookup("AUTO PRUNE IMAGES");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+    }
+}
+
+#[test]
+fn agent_resource_name_is_agent() {
+    assert_eq!(Agent::resource_name(), "Agent");
+}
+
+#[test]
+fn agent_table_headers_are_correct() {
+    assert_eq!(
+        Agent::table_headers(),
+        vec![
+            "AGENT ID", "HOSTNAME", "STATUS", "ENABLED", "CORES", "MEMORY"
+        ]
+    );
+}
+
+#[test]
+fn agent_table_detail_has_all_labels() {
+    let expected_labels = vec![
+        "AGENT ID",
+        "SERVER ID",
+        "HOSTNAME",
+        "STATUS",
+        "ZONE ID",
+        "ENABLED",
+        "CORES",
+        "MEMORY",
+        "GPUS",
+        "CORES OVERRIDE",
+        "MEMORY OVERRIDE",
+        "GPUS OVERRIDE",
+        "AUTO PRUNE IMAGES",
+    ];
+    let agent = Agent {
+        agent_id: "test-id".into(),
+        ..Default::default()
+    };
+    let detail = agent.table_detail();
+    let labels: Vec<&str> = detail.iter().map(|(k, _)| *k).collect();
+    assert_eq!(labels, expected_labels);
+}
+
+#[test]
+fn agent_table_detail_contains_field_values() {
+    let agent = Agent {
+        agent_id: "agent-abc".into(),
+        server_id: Some("server-001".into()),
+        hostname: Some("kasm-host".into()),
+        status: Some("running".into()),
+        zone_id: Some("zone-001".into()),
+        enabled: Some(true),
+        cores: Some(4.0),
+        memory: Some(2_147_483_648),
+        gpus: Some(1.0),
+        cores_override: Some(2.0),
+        memory_override: Some(1_073_741_824),
+        gpus_override: Some(0.5),
+        auto_prune_images: Some("daily".into()),
+    };
+    let detail = agent.table_detail();
+    let lookup = |label: &str| {
+        detail
+            .iter()
+            .find(|(k, _)| *k == label)
+            .map(|(_, v)| v.clone())
+            .unwrap()
+    };
+    assert_eq!(lookup("AGENT ID"), "agent-abc");
+    assert_eq!(lookup("SERVER ID"), "server-001");
+    assert_eq!(lookup("HOSTNAME"), "kasm-host");
+    assert_eq!(lookup("STATUS"), "running");
+    assert_eq!(lookup("ZONE ID"), "zone-001");
+    assert_eq!(lookup("ENABLED"), "true");
+    assert_eq!(lookup("CORES"), "4");
+    assert_eq!(lookup("MEMORY"), "2GB");
+    assert_eq!(lookup("GPUS"), "1");
+    assert_eq!(lookup("CORES OVERRIDE"), "2");
+    assert_eq!(lookup("MEMORY OVERRIDE"), "1GB");
+    assert_eq!(lookup("GPUS OVERRIDE"), "0.5");
+    assert_eq!(lookup("AUTO PRUNE IMAGES"), "daily");
+}
+
+#[test]
+fn deserialize_missing_required_agent_id_fails() {
+    let json = r#"{"hostname": "kasm-host"}"#;
+    let result = serde_json::from_str::<Agent>(json);
     assert!(result.is_err());
 }
