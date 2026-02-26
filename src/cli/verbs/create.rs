@@ -66,4 +66,51 @@ pub enum CreateResource {
         #[arg(long)]
         image_type: Option<String>,
     },
+
+    /// Create a new server
+    Server {
+        /// Human-readable name
+        #[arg(long)]
+        friendly_name: String,
+
+        /// Server hostname or IP
+        #[arg(long)]
+        hostname: String,
+
+        /// Connection type (ssh, rdp, vnc, kasmvnc)
+        #[arg(long)]
+        connection_type: String,
+
+        /// Connection port
+        #[arg(long)]
+        connection_port: i32,
+
+        /// Zone ID to assign the server to
+        #[arg(long)]
+        zone: String,
+
+        /// Whether the server is enabled
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+        enabled: bool,
+
+        /// Connection username
+        #[arg(long)]
+        connection_username: Option<String>,
+
+        /// Connection info/credentials
+        #[arg(long)]
+        connection_info: Option<String>,
+
+        /// Maximum simultaneous sessions
+        #[arg(long)]
+        max_simultaneous_sessions: Option<i32>,
+
+        /// Maximum simultaneous users
+        #[arg(long)]
+        max_simultaneous_users: Option<i32>,
+
+        /// Pool ID
+        #[arg(long)]
+        pool_id: Option<String>,
+    },
 }

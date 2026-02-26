@@ -1,6 +1,7 @@
 pub mod agents;
 pub mod error;
 pub mod images;
+pub mod servers;
 pub mod sessions;
 pub mod zones;
 

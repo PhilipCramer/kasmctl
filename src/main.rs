@@ -8,6 +8,7 @@ use comfy_table::{Table, presets::UTF8_FULL_CONDENSED};
 use kasmctl::api::KasmClient;
 use kasmctl::api::agents::UpdateAgentRequest;
 use kasmctl::api::images::UpdateImageRequest;
+use kasmctl::api::servers::UpdateServerRequest;
 use kasmctl::cli::config_cmd::ConfigCommand;
 use kasmctl::cli::verbs::create::CreateResource;
 use kasmctl::cli::verbs::delete::DeleteResource;
@@ -109,6 +110,19 @@ fn handle_get(client: &KasmClient, resource: GetResource, format: &OutputFormat)
             filters.apply(&mut agents);
             println!("{}", output::render_list(&agents, format)?);
         }
+        GetResource::Server { id } => {
+            let servers = client.get_servers().context("failed to list servers")?;
+            let server = servers
+                .into_iter()
+                .find(|s| s.server_id == id)
+                .ok_or_else(|| anyhow::anyhow!("server {id:?} not found"))?;
+            println!("{}", output::render_one(&server, format)?);
+        }
+        GetResource::Servers { filters } => {
+            let mut servers = client.get_servers().context("failed to list servers")?;
+            filters.apply(&mut servers);
+            println!("{}", output::render_list(&servers, format)?);
+        }
     }
     Ok(())
 }
@@ -173,6 +187,37 @@ fn handle_create(
                 .context("failed to create image")?;
             println!("{}", output::render_one(&image, format)?);
         }
+        CreateResource::Server {
+            friendly_name,
+            hostname,
+            connection_type,
+            connection_port,
+            zone,
+            enabled,
+            connection_username,
+            connection_info,
+            max_simultaneous_sessions,
+            max_simultaneous_users,
+            pool_id,
+        } => {
+            let params = kasmctl::api::servers::CreateServerParams {
+                friendly_name,
+                hostname,
+                connection_type,
+                connection_port,
+                zone_id: zone,
+                enabled,
+                connection_username,
+                connection_info,
+                max_simultaneous_sessions,
+                max_simultaneous_users,
+                pool_id,
+            };
+            let server = client
+                .create_server(&params)
+                .context("failed to create server")?;
+            println!("{}", output::render_one(&server, format)?);
+        }
     }
     Ok(())
 }
@@ -188,6 +233,12 @@ fn handle_delete(client: &KasmClient, resource: DeleteResource) -> Result<()> {
         DeleteResource::Image { id } => {
             client.delete_image(&id).context("failed to delete image")?;
             println!("Image {id} deleted.");
+        }
+        DeleteResource::Server { id } => {
+            client
+                .delete_server(&id)
+                .context("failed to delete server")?;
+            println!("Server {id} deleted.");
         }
     }
     Ok(())
@@ -252,6 +303,39 @@ fn handle_update(
                 .update_agent(&req)
                 .context("failed to update agent")?;
             println!("{}", output::render_one(&agent, format)?);
+        }
+        UpdateResource::Server {
+            id,
+            friendly_name,
+            hostname,
+            enabled,
+            connection_type,
+            connection_port,
+            connection_username,
+            connection_info,
+            max_simultaneous_sessions,
+            max_simultaneous_users,
+            zone_id,
+            pool_id,
+        } => {
+            let req = UpdateServerRequest {
+                server_id: id,
+                friendly_name,
+                hostname,
+                enabled,
+                connection_type,
+                connection_port,
+                connection_username,
+                connection_info,
+                max_simultaneous_sessions,
+                max_simultaneous_users,
+                zone_id,
+                pool_id,
+            };
+            let server = client
+                .update_server(&req)
+                .context("failed to update server")?;
+            println!("{}", output::render_one(&server, format)?);
         }
     }
     Ok(())

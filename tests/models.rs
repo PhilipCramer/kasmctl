@@ -1,5 +1,6 @@
 use kasmctl::models::agent::Agent;
 use kasmctl::models::image::Image;
+use kasmctl::models::server::Server;
 use kasmctl::models::session::{CreateSessionResponse, Session, SessionImage};
 use kasmctl::models::zone::Zone;
 use kasmctl::output::display::short_id;
@@ -152,6 +153,51 @@ fn arb_create_session_response() -> impl Strategy<Value = CreateSessionResponse>
                     share_id,
                     user_id,
                     username,
+                }
+            },
+        )
+}
+
+fn arb_zone() -> impl Strategy<Value = Zone> {
+    (
+        "[a-zA-Z0-9-]{1,36}",
+        arb_option_string(),
+        arb_option_string(),
+        arb_option_string(),
+        arb_option_string(),
+        arb_option_bool(),
+        arb_option_bool(),
+        arb_option_bool(),
+        arb_option_string(),
+        arb_option_string(),
+        arb_option_i32(),
+    )
+        .prop_map(
+            |(
+                zone_id,
+                zone_name,
+                allow_origin_domain,
+                upstream_auth_address,
+                load_balancing_strategy,
+                search_alternate_zones,
+                prioritize_static_agents,
+                proxy_connections,
+                proxy_hostname,
+                proxy_path,
+                proxy_port,
+            )| {
+                Zone {
+                    zone_id,
+                    zone_name,
+                    allow_origin_domain,
+                    upstream_auth_address,
+                    load_balancing_strategy,
+                    search_alternate_zones,
+                    prioritize_static_agents,
+                    proxy_connections,
+                    proxy_hostname,
+                    proxy_path,
+                    proxy_port,
                 }
             },
         )
@@ -600,51 +646,6 @@ fn image_memory_format_bytes_raw() {
 
 // ===================== Zone =====================
 
-fn arb_zone() -> impl Strategy<Value = Zone> {
-    (
-        "[a-zA-Z0-9-]{1,36}",
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_bool(),
-        arb_option_bool(),
-        arb_option_bool(),
-        arb_option_string(),
-        arb_option_string(),
-        arb_option_i32(),
-    )
-        .prop_map(
-            |(
-                zone_id,
-                zone_name,
-                allow_origin_domain,
-                upstream_auth_address,
-                load_balancing_strategy,
-                search_alternate_zones,
-                prioritize_static_agents,
-                proxy_connections,
-                proxy_hostname,
-                proxy_path,
-                proxy_port,
-            )| {
-                Zone {
-                    zone_id,
-                    zone_name,
-                    allow_origin_domain,
-                    upstream_auth_address,
-                    load_balancing_strategy,
-                    search_alternate_zones,
-                    prioritize_static_agents,
-                    proxy_connections,
-                    proxy_hostname,
-                    proxy_path,
-                    proxy_port,
-                }
-            },
-        )
-}
-
 proptest! {
     #[test]
     fn zone_serde_roundtrip(zone in arb_zone()) {
@@ -1050,5 +1051,246 @@ fn agent_table_detail_contains_field_values() {
 fn deserialize_missing_required_agent_id_fails() {
     let json = r#"{"hostname": "kasm-host"}"#;
     let result = serde_json::from_str::<Agent>(json);
+    assert!(result.is_err());
+}
+
+// ===================== Server =====================
+
+fn arb_server() -> impl Strategy<Value = Server> {
+    (
+        (
+            "[a-zA-Z0-9-]{1,36}",
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_bool(),
+            arb_option_string(),
+            arb_option_i32(),
+        ),
+        (
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_i32(),
+            arb_option_i32(),
+            arb_option_string(),
+            arb_option_string(),
+        ),
+    )
+        .prop_map(
+            |(
+                (server_id, friendly_name, hostname, enabled, connection_type, connection_port),
+                (
+                    connection_username,
+                    connection_info,
+                    max_simultaneous_sessions,
+                    max_simultaneous_users,
+                    zone_id,
+                    pool_id,
+                ),
+            )| {
+                Server {
+                    server_id,
+                    friendly_name,
+                    hostname,
+                    enabled,
+                    connection_type,
+                    connection_port,
+                    connection_username,
+                    connection_info,
+                    max_simultaneous_sessions,
+                    max_simultaneous_users,
+                    zone_id,
+                    pool_id,
+                }
+            },
+        )
+}
+
+proptest! {
+    #[test]
+    fn server_serde_roundtrip(server in arb_server()) {
+        let json = serde_json::to_string(&server).unwrap();
+        let deserialized: Server = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(server, deserialized);
+    }
+
+    #[test]
+    fn server_table_row_length_matches_headers(server in arb_server()) {
+        let headers = Server::table_headers();
+        let row = server.table_row();
+        prop_assert_eq!(row.len(), headers.len());
+    }
+
+    #[test]
+    fn server_table_row_first_column_is_server_id(server in arb_server()) {
+        let row = server.table_row();
+        prop_assert_eq!(&row[0], short_id(&server.server_id));
+    }
+
+    #[test]
+    fn server_table_row_none_fields_become_empty_string(server in arb_server()) {
+        let row = server.table_row();
+        if server.friendly_name.is_none() {
+            prop_assert_eq!(&row[1], "");
+        }
+        if server.hostname.is_none() {
+            prop_assert_eq!(&row[2], "");
+        }
+        if server.connection_type.is_none() {
+            prop_assert_eq!(&row[3], "");
+        }
+        if server.enabled.is_none() {
+            prop_assert_eq!(&row[4], "");
+        }
+        if server.max_simultaneous_sessions.is_none() {
+            prop_assert_eq!(&row[5], "");
+        }
+    }
+
+    #[test]
+    fn server_table_detail_contains_server_id(server in arb_server()) {
+        let detail = server.table_detail();
+        let entry = detail.iter().find(|(k, _)| *k == "SERVER ID");
+        prop_assert!(entry.is_some());
+        prop_assert_eq!(&entry.unwrap().1, &server.server_id);
+    }
+
+    #[test]
+    fn server_table_detail_none_fields_become_empty_string(server in arb_server()) {
+        let detail = server.table_detail();
+        let lookup = |label: &str| detail.iter().find(|(k, _)| *k == label).map(|(_, v)| v.clone());
+        if server.friendly_name.is_none() {
+            let val = lookup("FRIENDLY NAME");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if server.hostname.is_none() {
+            let val = lookup("HOSTNAME");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if server.enabled.is_none() {
+            let val = lookup("ENABLED");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if server.connection_type.is_none() {
+            let val = lookup("CONNECTION TYPE");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if server.connection_port.is_none() {
+            let val = lookup("CONNECTION PORT");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if server.connection_username.is_none() {
+            let val = lookup("CONNECTION USERNAME");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if server.connection_info.is_none() {
+            let val = lookup("CONNECTION INFO");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if server.max_simultaneous_sessions.is_none() {
+            let val = lookup("MAX SIMULTANEOUS SESSIONS");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if server.max_simultaneous_users.is_none() {
+            let val = lookup("MAX SIMULTANEOUS USERS");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if server.zone_id.is_none() {
+            let val = lookup("ZONE ID");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if server.pool_id.is_none() {
+            let val = lookup("POOL ID");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+    }
+}
+
+#[test]
+fn server_resource_name_is_server() {
+    assert_eq!(Server::resource_name(), "Server");
+}
+
+#[test]
+fn server_table_headers_are_correct() {
+    assert_eq!(
+        Server::table_headers(),
+        vec![
+            "SERVER ID",
+            "NAME",
+            "HOSTNAME",
+            "TYPE",
+            "ENABLED",
+            "SESSIONS"
+        ]
+    );
+}
+
+#[test]
+fn server_table_detail_has_all_labels() {
+    let expected_labels = vec![
+        "SERVER ID",
+        "FRIENDLY NAME",
+        "HOSTNAME",
+        "ENABLED",
+        "CONNECTION TYPE",
+        "CONNECTION PORT",
+        "CONNECTION USERNAME",
+        "CONNECTION INFO",
+        "MAX SIMULTANEOUS SESSIONS",
+        "MAX SIMULTANEOUS USERS",
+        "ZONE ID",
+        "POOL ID",
+    ];
+    let server = Server {
+        server_id: "test-id".into(),
+        ..Default::default()
+    };
+    let detail = server.table_detail();
+    let labels: Vec<&str> = detail.iter().map(|(k, _)| *k).collect();
+    assert_eq!(labels, expected_labels);
+}
+
+#[test]
+fn server_table_detail_contains_field_values() {
+    let server = Server {
+        server_id: "srv-abc".into(),
+        friendly_name: Some("Prod Server".into()),
+        hostname: Some("10.0.0.1".into()),
+        enabled: Some(true),
+        connection_type: Some("ssh".into()),
+        connection_port: Some(22),
+        connection_username: Some("kasm".into()),
+        connection_info: Some("key-data".into()),
+        max_simultaneous_sessions: Some(10),
+        max_simultaneous_users: Some(5),
+        zone_id: Some("zone-001".into()),
+        pool_id: Some("pool-001".into()),
+    };
+    let detail = server.table_detail();
+    let lookup = |label: &str| {
+        detail
+            .iter()
+            .find(|(k, _)| *k == label)
+            .map(|(_, v)| v.clone())
+            .unwrap()
+    };
+    assert_eq!(lookup("SERVER ID"), "srv-abc");
+    assert_eq!(lookup("FRIENDLY NAME"), "Prod Server");
+    assert_eq!(lookup("HOSTNAME"), "10.0.0.1");
+    assert_eq!(lookup("ENABLED"), "true");
+    assert_eq!(lookup("CONNECTION TYPE"), "ssh");
+    assert_eq!(lookup("CONNECTION PORT"), "22");
+    assert_eq!(lookup("CONNECTION USERNAME"), "kasm");
+    assert_eq!(lookup("CONNECTION INFO"), "key-data");
+    assert_eq!(lookup("MAX SIMULTANEOUS SESSIONS"), "10");
+    assert_eq!(lookup("MAX SIMULTANEOUS USERS"), "5");
+    assert_eq!(lookup("ZONE ID"), "zone-001");
+    assert_eq!(lookup("POOL ID"), "pool-001");
+}
+
+#[test]
+fn deserialize_missing_required_server_id_fails() {
+    let json = r#"{"hostname": "10.0.0.1"}"#;
+    let result = serde_json::from_str::<Server>(json);
     assert!(result.is_err());
 }
