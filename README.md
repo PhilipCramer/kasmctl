@@ -37,7 +37,9 @@ Download the archive for your platform from the [latest release](https://github.
 | Platform | Archive |
 |---|---|
 | Linux x86_64 | `kasmctl-linux-amd64.tar.gz` |
+| Linux x86_64 (static/musl) | `kasmctl-linux-amd64-musl.tar.gz` |
 | Linux ARM64 | `kasmctl-linux-arm64.tar.gz` |
+| Linux ARM64 (static/musl) | `kasmctl-linux-arm64-musl.tar.gz` |
 | macOS Intel | `kasmctl-darwin-amd64.tar.gz` |
 | macOS Apple Silicon | `kasmctl-darwin-arm64.tar.gz` |
 
