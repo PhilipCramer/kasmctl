@@ -815,6 +815,58 @@ fn resume_kasm_success() {
     mock.assert();
 }
 
+// --- get_zones ---
+
+#[test]
+fn get_zones_success() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/public/get_zones")
+        .with_status(200)
+        .with_body(
+            r#"{"zones":[
+                {"zone_id":"zone-001","zone_name":"us-east","load_balancing_strategy":"round_robin","proxy_connections":true},
+                {"zone_id":"zone-002","zone_name":"eu-west"}
+            ]}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let zones = client.get_zones().unwrap();
+
+    assert_eq!(zones.len(), 2);
+    assert_eq!(zones[0].zone_id, "zone-001");
+    assert_eq!(zones[0].zone_name.as_deref(), Some("us-east"));
+    assert_eq!(
+        zones[0].load_balancing_strategy.as_deref(),
+        Some("round_robin")
+    );
+    assert_eq!(zones[0].proxy_connections, Some(true));
+    assert_eq!(zones[1].zone_id, "zone-002");
+    assert_eq!(zones[1].zone_name.as_deref(), Some("eu-west"));
+
+    mock.assert();
+}
+
+#[test]
+fn get_zones_empty_list() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/public/get_zones")
+        .with_status(200)
+        .with_body(r#"{"zones":[]}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let zones = client.get_zones().unwrap();
+
+    assert!(zones.is_empty());
+
+    mock.assert();
+}
+
 // --- URL construction ---
 
 #[test]

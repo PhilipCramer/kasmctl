@@ -255,6 +255,57 @@ fn parse_get_images_no_filters_is_empty() {
     assert!(filters.image_type.is_none());
 }
 
+// --- Get zones ---
+
+#[test]
+fn parse_get_zones() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "zones"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Zones { filters } = args.resource else {
+        panic!("expected Zones resource");
+    };
+    assert!(filters.is_empty());
+}
+
+#[test]
+fn parse_get_zone_by_id() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "zone", "zone-abc"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Zone { id } = args.resource else {
+        panic!("expected Zone resource");
+    };
+    assert_eq!(id, "zone-abc");
+}
+
+#[test]
+fn parse_get_zone_requires_id() {
+    let result = Cli::try_parse_from(["kasmctl", "get", "zone"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_get_zones_positional_id_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "get", "zones", "zone-abc"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_get_zones_with_name_filter() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "zones", "--name", "us-east"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Zones { filters } = args.resource else {
+        panic!("expected Zones resource");
+    };
+    assert_eq!(filters.name.as_deref(), Some("us-east"));
+    assert!(!filters.is_empty());
+}
+
 // --- Create commands ---
 
 #[test]

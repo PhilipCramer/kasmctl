@@ -4,6 +4,7 @@ use clap::Args;
 
 use crate::models::image::Image;
 use crate::models::session::Session;
+use crate::models::zone::Zone;
 
 /// Shared filter options for bulk session commands.
 #[derive(Args, Clone, Debug, Default)]
@@ -191,6 +192,38 @@ impl ImageFilters {
                     .image_src
                     .as_ref()
                     .is_none_or(|s| s.to_lowercase() != *expected_type)
+            {
+                return false;
+            }
+
+            true
+        });
+    }
+}
+
+/// Shared filter options for zone list commands.
+#[derive(Args, Clone, Debug, Default)]
+pub struct ZoneFilters {
+    /// Filter by zone name (case-insensitive substring match)
+    #[arg(long)]
+    pub name: Option<String>,
+}
+
+impl ZoneFilters {
+    /// Returns true when no filters are set.
+    pub fn is_empty(&self) -> bool {
+        self.name.is_none()
+    }
+
+    /// Apply all filters to a list of zones, removing non-matching entries.
+    pub fn apply(&self, zones: &mut Vec<Zone>) {
+        let name_lower = self.name.as_ref().map(|n| n.to_lowercase());
+
+        zones.retain(|z| {
+            if let Some(ref pattern) = name_lower
+                && z.zone_name
+                    .as_ref()
+                    .is_none_or(|n| !n.to_lowercase().contains(pattern.as_str()))
             {
                 return false;
             }

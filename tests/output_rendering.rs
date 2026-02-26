@@ -1,5 +1,6 @@
 use kasmctl::models::image::Image;
 use kasmctl::models::session::{Session, SessionImage};
+use kasmctl::models::zone::Zone;
 use kasmctl::output::display::short_id;
 use kasmctl::output::{self, OutputFormat};
 use proptest::prelude::*;
@@ -428,4 +429,99 @@ fn image_table_list_includes_footer_count() {
     };
     let output = output::render_list(&[image], &OutputFormat::Table).unwrap();
     assert!(output.ends_with("\n1 image"), "output was: {output}");
+}
+
+// ===================== Zone output rendering =====================
+
+fn arb_zone() -> impl Strategy<Value = Zone> {
+    (
+        "[a-zA-Z0-9-]{1,36}",
+        prop_oneof![Just(None), "[a-zA-Z0-9 _-]{0,50}".prop_map(Some)],
+        prop_oneof![Just(None), "[a-zA-Z0-9 _-]{0,50}".prop_map(Some)],
+        prop_oneof![Just(None), "[a-zA-Z0-9 _-]{0,50}".prop_map(Some)],
+        prop_oneof![Just(None), "[a-zA-Z0-9 _-]{0,50}".prop_map(Some)],
+    )
+        .prop_map(
+            |(
+                zone_id,
+                zone_name,
+                allow_origin_domain,
+                upstream_auth_address,
+                load_balancing_strategy,
+            )| {
+                Zone {
+                    zone_id,
+                    zone_name,
+                    allow_origin_domain,
+                    upstream_auth_address,
+                    load_balancing_strategy,
+                    ..Default::default()
+                }
+            },
+        )
+}
+
+fn arb_zones() -> impl Strategy<Value = Vec<Zone>> {
+    prop::collection::vec(arb_zone(), 0..10)
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(50))]
+
+    #[test]
+    fn zone_json_render_list_produces_valid_json(zones in arb_zones()) {
+        let output = output::render_list(&zones, &OutputFormat::Json).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        prop_assert!(parsed.is_array());
+        prop_assert_eq!(parsed.as_array().unwrap().len(), zones.len());
+    }
+
+    #[test]
+    fn zone_yaml_render_list_produces_valid_yaml(zones in arb_zones()) {
+        let output = output::render_list(&zones, &OutputFormat::Yaml).unwrap();
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&output).unwrap();
+        prop_assert!(parsed.is_sequence());
+    }
+
+    #[test]
+    fn zone_json_render_one_produces_object(zone in arb_zone()) {
+        let output = output::render_one(&zone, &OutputFormat::Json).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        prop_assert!(parsed.is_object());
+    }
+
+    #[test]
+    fn zone_table_list_contains_all_zone_ids(zones in arb_zones()) {
+        let output = output::render_list(&zones, &OutputFormat::Table).unwrap();
+        for zone in &zones {
+            prop_assert!(
+                output.contains(short_id(&zone.zone_id)),
+                "missing short zone_id: {}",
+                short_id(&zone.zone_id)
+            );
+        }
+    }
+
+    #[test]
+    fn zone_table_detail_contains_zone_id(zone in arb_zone()) {
+        let output = output::render_one(&zone, &OutputFormat::Table).unwrap();
+        prop_assert!(output.contains(&zone.zone_id));
+    }
+}
+
+#[test]
+fn zone_table_empty_list_has_headers_only() {
+    let output = output::render_list::<Zone>(&[], &OutputFormat::Table).unwrap();
+    assert_eq!(output, "No zones found.");
+}
+
+#[test]
+fn zone_table_list_includes_footer_count() {
+    let zone = Zone {
+        zone_id: "zone-001".into(),
+        zone_name: Some("us-east".into()),
+        ..Default::default()
+    };
+    let output = output::render_list(&[zone], &OutputFormat::Table).unwrap();
+    assert!(output.ends_with("\n1 zone"), "output was: {output}");
 }
