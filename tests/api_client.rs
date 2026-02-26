@@ -752,6 +752,313 @@ fn update_image_api_error() {
     assert!(err.contains("image not found"), "error was: {err}");
 }
 
+// ===================== get_servers =====================
+
+#[test]
+fn get_servers_success() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/get_servers")
+        .with_status(200)
+        .with_body(
+            r#"{"servers":[
+                {"server_id":"srv-001","friendly_name":"Prod Server","hostname":"10.0.0.1","enabled":true,"connection_type":"ssh","connection_port":22},
+                {"server_id":"srv-002","friendly_name":"Dev Server","hostname":"10.0.0.2","enabled":false}
+            ]}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let servers = client.get_servers().unwrap();
+
+    assert_eq!(servers.len(), 2);
+    assert_eq!(servers[0].server_id, "srv-001");
+    assert_eq!(servers[0].friendly_name.as_deref(), Some("Prod Server"));
+    assert_eq!(servers[0].enabled, Some(true));
+    assert_eq!(servers[0].connection_type.as_deref(), Some("ssh"));
+    assert_eq!(servers[0].connection_port, Some(22));
+    assert_eq!(servers[1].server_id, "srv-002");
+    assert_eq!(servers[1].enabled, Some(false));
+
+    mock.assert();
+}
+
+#[test]
+fn get_servers_empty_list() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/get_servers")
+        .with_status(200)
+        .with_body(r#"{"servers":[]}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let servers = client.get_servers().unwrap();
+
+    assert!(servers.is_empty());
+
+    mock.assert();
+}
+
+// --- create_server ---
+
+#[test]
+fn create_server_success() {
+    use kasmctl::api::servers::CreateServerParams;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/create_server")
+        .with_status(200)
+        .with_body(
+            r#"{"server":{"server_id":"new-srv-1","friendly_name":"Prod Server","hostname":"10.0.0.1","enabled":true,"connection_type":"ssh","connection_port":22}}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let params = CreateServerParams {
+        friendly_name: "Prod Server".into(),
+        hostname: "10.0.0.1".into(),
+        connection_type: "ssh".into(),
+        connection_port: 22,
+        zone_id: "zone-abc".into(),
+        enabled: true,
+        connection_username: None,
+        connection_info: None,
+        max_simultaneous_sessions: None,
+        max_simultaneous_users: None,
+        pool_id: None,
+    };
+    let srv = client.create_server(&params).unwrap();
+
+    assert_eq!(srv.server_id, "new-srv-1");
+    assert_eq!(srv.friendly_name.as_deref(), Some("Prod Server"));
+    mock.assert();
+}
+
+#[test]
+fn create_server_sends_target_server_wrapper() {
+    use kasmctl::api::servers::CreateServerParams;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/create_server")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"target_server":{"friendly_name":"My Server","hostname":"10.0.0.1","connection_type":"ssh","connection_port":22,"zone_id":"zone-abc","enabled":true}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(
+            r#"{"server":{"server_id":"new-srv-1","friendly_name":"My Server","hostname":"10.0.0.1","enabled":true,"connection_type":"ssh","connection_port":22}}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let params = CreateServerParams {
+        friendly_name: "My Server".into(),
+        hostname: "10.0.0.1".into(),
+        connection_type: "ssh".into(),
+        connection_port: 22,
+        zone_id: "zone-abc".into(),
+        enabled: true,
+        connection_username: None,
+        connection_info: None,
+        max_simultaneous_sessions: None,
+        max_simultaneous_users: None,
+        pool_id: None,
+    };
+    client.create_server(&params).unwrap();
+
+    mock.assert();
+}
+
+// --- update_server ---
+
+#[test]
+fn update_server_success() {
+    use kasmctl::api::servers::UpdateServerRequest;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/update_server")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"target_server":{"server_id":"srv-001","friendly_name":"New Name"}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(
+            r#"{"server":{"server_id":"srv-001","friendly_name":"New Name","enabled":true}}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let req = UpdateServerRequest {
+        server_id: "srv-001".into(),
+        friendly_name: Some("New Name".into()),
+        hostname: None,
+        enabled: None,
+        connection_type: None,
+        connection_port: None,
+        connection_username: None,
+        connection_info: None,
+        max_simultaneous_sessions: None,
+        max_simultaneous_users: None,
+        zone_id: None,
+        pool_id: None,
+    };
+    let srv = client.update_server(&req).unwrap();
+
+    assert_eq!(srv.server_id, "srv-001");
+    assert_eq!(srv.friendly_name.as_deref(), Some("New Name"));
+    mock.assert();
+}
+
+#[test]
+fn update_server_sends_target_server_wrapper() {
+    use kasmctl::api::servers::UpdateServerRequest;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/update_server")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"target_server":{"server_id":"srv-001","enabled":false}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{"server":{"server_id":"srv-001","enabled":false}}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let req = UpdateServerRequest {
+        server_id: "srv-001".into(),
+        friendly_name: None,
+        hostname: None,
+        enabled: Some(false),
+        connection_type: None,
+        connection_port: None,
+        connection_username: None,
+        connection_info: None,
+        max_simultaneous_sessions: None,
+        max_simultaneous_users: None,
+        zone_id: None,
+        pool_id: None,
+    };
+    client.update_server(&req).unwrap();
+
+    mock.assert();
+}
+
+#[test]
+fn update_server_omits_none_fields() {
+    use kasmctl::api::servers::UpdateServerRequest;
+
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/update_server")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"target_server":{"server_id":"srv-001"}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{"server":{"server_id":"srv-001"}}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let req = UpdateServerRequest {
+        server_id: "srv-001".into(),
+        friendly_name: None,
+        hostname: None,
+        enabled: None,
+        connection_type: None,
+        connection_port: None,
+        connection_username: None,
+        connection_info: None,
+        max_simultaneous_sessions: None,
+        max_simultaneous_users: None,
+        zone_id: None,
+        pool_id: None,
+    };
+    client.update_server(&req).unwrap();
+
+    mock.assert();
+}
+
+// --- delete_server ---
+
+#[test]
+fn delete_server_success() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/delete_server")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"target_server":{"server_id":"srv-abc"}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    client.delete_server("srv-abc").unwrap();
+
+    mock.assert();
+}
+
+// --- get_zones ---
+
+#[test]
+fn get_zones_success() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/public/get_zones")
+        .with_status(200)
+        .with_body(
+            r#"{"zones":[
+                {"zone_id":"zone-001","zone_name":"us-east","load_balancing_strategy":"round_robin","proxy_connections":true},
+                {"zone_id":"zone-002","zone_name":"eu-west"}
+            ]}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let zones = client.get_zones().unwrap();
+
+    assert_eq!(zones.len(), 2);
+    assert_eq!(zones[0].zone_id, "zone-001");
+    assert_eq!(zones[0].zone_name.as_deref(), Some("us-east"));
+    assert_eq!(
+        zones[0].load_balancing_strategy.as_deref(),
+        Some("round_robin")
+    );
+    assert_eq!(zones[0].proxy_connections, Some(true));
+    assert_eq!(zones[1].zone_id, "zone-002");
+    assert_eq!(zones[1].zone_name.as_deref(), Some("eu-west"));
+
+    mock.assert();
+}
+
+#[test]
+fn get_zones_empty_list() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/public/get_zones")
+        .with_status(200)
+        .with_body(r#"{"zones":[]}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let zones = client.get_zones().unwrap();
+
+    assert!(zones.is_empty());
+
+    mock.assert();
+}
+
 // --- stop_kasm ---
 
 #[test]
@@ -811,58 +1118,6 @@ fn resume_kasm_success() {
     let ctx = test_context(&server.url());
     let client = KasmClient::new(&ctx).unwrap();
     client.resume_kasm("abc-123").unwrap();
-
-    mock.assert();
-}
-
-// --- get_zones ---
-
-#[test]
-fn get_zones_success() {
-    let mut server = mockito::Server::new();
-    let mock = server
-        .mock("POST", "/api/public/get_zones")
-        .with_status(200)
-        .with_body(
-            r#"{"zones":[
-                {"zone_id":"zone-001","zone_name":"us-east","load_balancing_strategy":"round_robin","proxy_connections":true},
-                {"zone_id":"zone-002","zone_name":"eu-west"}
-            ]}"#,
-        )
-        .create();
-
-    let ctx = test_context(&server.url());
-    let client = KasmClient::new(&ctx).unwrap();
-    let zones = client.get_zones().unwrap();
-
-    assert_eq!(zones.len(), 2);
-    assert_eq!(zones[0].zone_id, "zone-001");
-    assert_eq!(zones[0].zone_name.as_deref(), Some("us-east"));
-    assert_eq!(
-        zones[0].load_balancing_strategy.as_deref(),
-        Some("round_robin")
-    );
-    assert_eq!(zones[0].proxy_connections, Some(true));
-    assert_eq!(zones[1].zone_id, "zone-002");
-    assert_eq!(zones[1].zone_name.as_deref(), Some("eu-west"));
-
-    mock.assert();
-}
-
-#[test]
-fn get_zones_empty_list() {
-    let mut server = mockito::Server::new();
-    let mock = server
-        .mock("POST", "/api/public/get_zones")
-        .with_status(200)
-        .with_body(r#"{"zones":[]}"#)
-        .create();
-
-    let ctx = test_context(&server.url());
-    let client = KasmClient::new(&ctx).unwrap();
-    let zones = client.get_zones().unwrap();
-
-    assert!(zones.is_empty());
 
     mock.assert();
 }

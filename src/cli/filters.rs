@@ -4,6 +4,7 @@ use clap::Args;
 
 use crate::models::agent::Agent;
 use crate::models::image::Image;
+use crate::models::server::Server;
 use crate::models::session::Session;
 use crate::models::zone::Zone;
 
@@ -283,6 +284,81 @@ impl AgentFilters {
                 && a.status
                     .as_ref()
                     .is_none_or(|s| s.to_lowercase() != *status)
+            {
+                return false;
+            }
+
+            true
+        });
+    }
+}
+
+/// Shared filter options for server list commands.
+#[derive(Args, Clone, Debug, Default)]
+pub struct ServerFilters {
+    /// Filter by zone ID (exact match)
+    #[arg(long)]
+    pub zone: Option<String>,
+
+    /// Filter by connection type (case-insensitive exact match)
+    #[arg(long)]
+    pub connection_type: Option<String>,
+
+    /// Only show enabled servers
+    #[arg(long, conflicts_with = "disabled")]
+    pub enabled: bool,
+
+    /// Only show disabled servers
+    #[arg(long, conflicts_with = "enabled")]
+    pub disabled: bool,
+
+    /// Filter by friendly name (case-insensitive substring match)
+    #[arg(long)]
+    pub name: Option<String>,
+}
+
+impl ServerFilters {
+    /// Returns true when no filters are set.
+    pub fn is_empty(&self) -> bool {
+        self.zone.is_none()
+            && self.connection_type.is_none()
+            && !self.enabled
+            && !self.disabled
+            && self.name.is_none()
+    }
+
+    /// Apply all filters to a list of servers, removing non-matching entries.
+    pub fn apply(&self, servers: &mut Vec<Server>) {
+        let type_lower = self.connection_type.as_ref().map(|t| t.to_lowercase());
+        let name_lower = self.name.as_ref().map(|n| n.to_lowercase());
+
+        servers.retain(|s| {
+            if let Some(ref zone_id) = self.zone
+                && s.zone_id.as_deref() != Some(zone_id.as_str())
+            {
+                return false;
+            }
+
+            if let Some(ref expected_type) = type_lower
+                && s.connection_type
+                    .as_ref()
+                    .is_none_or(|t| t.to_lowercase() != *expected_type)
+            {
+                return false;
+            }
+
+            if self.enabled && s.enabled != Some(true) {
+                return false;
+            }
+
+            if self.disabled && s.enabled != Some(false) {
+                return false;
+            }
+
+            if let Some(ref pattern) = name_lower
+                && s.friendly_name
+                    .as_ref()
+                    .is_none_or(|n| !n.to_lowercase().contains(pattern.as_str()))
             {
                 return false;
             }

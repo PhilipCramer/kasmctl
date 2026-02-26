@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 
-use crate::cli::filters::{AgentFilters, ImageFilters, SessionFilters, ZoneFilters};
+use crate::cli::filters::{AgentFilters, ImageFilters, ServerFilters, SessionFilters, ZoneFilters};
 
 #[derive(Args)]
 pub struct GetArgs {
@@ -56,5 +56,15 @@ pub enum GetResource {
     Agents {
         #[command(flatten)]
         filters: AgentFilters,
+    },
+    /// Get a specific server by ID
+    Server {
+        /// Server ID
+        id: String,
+    },
+    /// List all servers
+    Servers {
+        #[command(flatten)]
+        filters: ServerFilters,
     },
 }

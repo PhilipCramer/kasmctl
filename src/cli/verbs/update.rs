@@ -83,4 +83,54 @@ pub enum UpdateResource {
         #[arg(long)]
         auto_prune_images: Option<String>,
     },
+
+    /// Update an existing server
+    Server {
+        /// Server ID to update
+        id: String,
+
+        /// Human-readable name
+        #[arg(long)]
+        friendly_name: Option<String>,
+
+        /// Server hostname or IP
+        #[arg(long)]
+        hostname: Option<String>,
+
+        /// Enable or disable the server
+        #[arg(long)]
+        enabled: Option<bool>,
+
+        /// Connection type
+        #[arg(long)]
+        connection_type: Option<String>,
+
+        /// Connection port
+        #[arg(long)]
+        connection_port: Option<i32>,
+
+        /// Connection username
+        #[arg(long)]
+        connection_username: Option<String>,
+
+        /// Connection info/credentials
+        #[arg(long)]
+        connection_info: Option<String>,
+
+        /// Maximum simultaneous sessions
+        #[arg(long)]
+        max_simultaneous_sessions: Option<i32>,
+
+        /// Maximum simultaneous users
+        #[arg(long)]
+        max_simultaneous_users: Option<i32>,
+
+        /// Zone ID
+        #[arg(long)]
+        zone_id: Option<String>,
+
+        /// Pool ID
+        #[arg(long)]
+        pool_id: Option<String>,
+    },
 }

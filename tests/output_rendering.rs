@@ -1,5 +1,6 @@
 use kasmctl::models::agent::Agent;
 use kasmctl::models::image::Image;
+use kasmctl::models::server::Server;
 use kasmctl::models::session::{Session, SessionImage};
 use kasmctl::models::zone::Zone;
 use kasmctl::output::display::short_id;
@@ -16,6 +17,10 @@ fn arb_option_bool() -> impl Strategy<Value = Option<bool>> {
 
 fn arb_option_f64() -> impl Strategy<Value = Option<f64>> {
     prop_oneof![Just(None), (1.0..16.0f64).prop_map(Some),]
+}
+
+fn arb_option_i32() -> impl Strategy<Value = Option<i32>> {
+    prop_oneof![Just(None), (1..65535i32).prop_map(Some),]
 }
 
 fn arb_option_memory() -> impl Strategy<Value = Option<i64>> {
@@ -622,4 +627,118 @@ fn agent_table_list_includes_footer_count() {
     };
     let output = output::render_list(&[agent], &OutputFormat::Table).unwrap();
     assert!(output.ends_with("\n1 agent"), "output was: {output}");
+}
+
+// ===================== Server output rendering =====================
+
+fn arb_server() -> impl Strategy<Value = Server> {
+    (
+        (
+            "[a-zA-Z0-9-]{1,36}",
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_bool(),
+            arb_option_string(),
+            arb_option_i32(),
+        ),
+        (
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_i32(),
+            arb_option_i32(),
+            arb_option_string(),
+            arb_option_string(),
+        ),
+    )
+        .prop_map(
+            |(
+                (server_id, friendly_name, hostname, enabled, connection_type, connection_port),
+                (
+                    connection_username,
+                    connection_info,
+                    max_simultaneous_sessions,
+                    max_simultaneous_users,
+                    zone_id,
+                    pool_id,
+                ),
+            )| Server {
+                server_id,
+                friendly_name,
+                hostname,
+                enabled,
+                connection_type,
+                connection_port,
+                connection_username,
+                connection_info,
+                max_simultaneous_sessions,
+                max_simultaneous_users,
+                zone_id,
+                pool_id,
+            },
+        )
+}
+
+fn arb_servers() -> impl Strategy<Value = Vec<Server>> {
+    prop::collection::vec(arb_server(), 0..10)
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(50))]
+
+    #[test]
+    fn server_json_render_list_produces_valid_json(servers in arb_servers()) {
+        let output = output::render_list(&servers, &OutputFormat::Json).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        prop_assert!(parsed.is_array());
+        prop_assert_eq!(parsed.as_array().unwrap().len(), servers.len());
+    }
+
+    #[test]
+    fn server_yaml_render_list_produces_valid_yaml(servers in arb_servers()) {
+        let output = output::render_list(&servers, &OutputFormat::Yaml).unwrap();
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&output).unwrap();
+        prop_assert!(parsed.is_sequence());
+    }
+
+    #[test]
+    fn server_json_render_one_produces_object(server in arb_server()) {
+        let output = output::render_one(&server, &OutputFormat::Json).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&output).unwrap();
+        prop_assert!(parsed.is_object());
+    }
+
+    #[test]
+    fn server_table_list_contains_all_server_ids(servers in arb_servers()) {
+        let output = output::render_list(&servers, &OutputFormat::Table).unwrap();
+        for server in &servers {
+            prop_assert!(
+                output.contains(short_id(&server.server_id)),
+                "missing short server_id: {}",
+                short_id(&server.server_id)
+            );
+        }
+    }
+
+    #[test]
+    fn server_table_detail_contains_server_id(server in arb_server()) {
+        let output = output::render_one(&server, &OutputFormat::Table).unwrap();
+        prop_assert!(output.contains(&server.server_id));
+    }
+}
+
+#[test]
+fn server_table_empty_list_has_headers_only() {
+    let output = output::render_list::<Server>(&[], &OutputFormat::Table).unwrap();
+    assert_eq!(output, "No servers found.");
+}
+
+#[test]
+fn server_table_list_includes_footer_count() {
+    let server = Server {
+        server_id: "srv-001".into(),
+        friendly_name: Some("Prod Server".into()),
+        ..Default::default()
+    };
+    let output = output::render_list(&[server], &OutputFormat::Table).unwrap();
+    assert!(output.ends_with("\n1 server"), "output was: {output}");
 }

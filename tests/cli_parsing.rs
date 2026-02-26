@@ -1593,3 +1593,403 @@ fn parse_update_no_subcommand_fails() {
     let result = Cli::try_parse_from(["kasmctl", "update"]);
     assert!(result.is_err());
 }
+
+// --- Get servers ---
+
+#[test]
+fn parse_get_servers() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "servers"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Servers { filters } = args.resource else {
+        panic!("expected Servers resource");
+    };
+    assert!(filters.is_empty());
+}
+
+#[test]
+fn parse_get_server_by_id() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "server", "srv-abc"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Server { id } = args.resource else {
+        panic!("expected Server resource");
+    };
+    assert_eq!(id, "srv-abc");
+}
+
+#[test]
+fn parse_get_server_requires_id() {
+    let result = Cli::try_parse_from(["kasmctl", "get", "server"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_get_servers_positional_id_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "get", "servers", "srv-abc"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_get_servers_with_zone_filter() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "servers", "--zone", "zone-abc"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Servers { filters } = args.resource else {
+        panic!("expected Servers resource");
+    };
+    assert_eq!(filters.zone.as_deref(), Some("zone-abc"));
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_servers_with_connection_type_filter() {
+    let cli =
+        Cli::try_parse_from(["kasmctl", "get", "servers", "--connection-type", "ssh"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Servers { filters } = args.resource else {
+        panic!("expected Servers resource");
+    };
+    assert_eq!(filters.connection_type.as_deref(), Some("ssh"));
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_servers_with_enabled_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "servers", "--enabled"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Servers { filters } = args.resource else {
+        panic!("expected Servers resource");
+    };
+    assert!(filters.enabled);
+    assert!(!filters.disabled);
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_servers_with_disabled_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "servers", "--disabled"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Servers { filters } = args.resource else {
+        panic!("expected Servers resource");
+    };
+    assert!(!filters.enabled);
+    assert!(filters.disabled);
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_servers_enabled_disabled_conflict() {
+    let result = Cli::try_parse_from(["kasmctl", "get", "servers", "--enabled", "--disabled"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_get_servers_with_name_filter() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "servers", "--name", "prod"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Servers { filters } = args.resource else {
+        panic!("expected Servers resource");
+    };
+    assert_eq!(filters.name.as_deref(), Some("prod"));
+    assert!(!filters.is_empty());
+}
+
+// --- Create server ---
+
+#[test]
+fn parse_create_server_required_flags() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "server",
+        "--friendly-name",
+        "Prod Server 1",
+        "--hostname",
+        "192.168.1.100",
+        "--connection-type",
+        "ssh",
+        "--connection-port",
+        "22",
+        "--zone",
+        "zone-abc",
+    ])
+    .unwrap();
+    let Command::Create(args) = cli.command else {
+        panic!("expected Create command");
+    };
+    let CreateResource::Server {
+        friendly_name,
+        hostname,
+        connection_type,
+        connection_port,
+        zone,
+        enabled,
+        ..
+    } = args.resource
+    else {
+        panic!("expected Server resource");
+    };
+    assert_eq!(friendly_name, "Prod Server 1");
+    assert_eq!(hostname, "192.168.1.100");
+    assert_eq!(connection_type, "ssh");
+    assert_eq!(connection_port, 22);
+    assert_eq!(zone, "zone-abc");
+    assert!(enabled);
+}
+
+#[test]
+fn parse_create_server_all_flags() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "server",
+        "--friendly-name",
+        "Prod Server 1",
+        "--hostname",
+        "192.168.1.100",
+        "--connection-type",
+        "ssh",
+        "--connection-port",
+        "22",
+        "--zone",
+        "zone-abc",
+        "--enabled",
+        "false",
+        "--connection-username",
+        "kasm",
+        "--connection-info",
+        "key-data",
+        "--max-simultaneous-sessions",
+        "10",
+        "--max-simultaneous-users",
+        "5",
+        "--pool-id",
+        "pool-xyz",
+    ])
+    .unwrap();
+    let Command::Create(args) = cli.command else {
+        panic!("expected Create command");
+    };
+    let CreateResource::Server {
+        friendly_name,
+        hostname,
+        connection_type,
+        connection_port,
+        zone,
+        enabled,
+        connection_username,
+        connection_info,
+        max_simultaneous_sessions,
+        max_simultaneous_users,
+        pool_id,
+    } = args.resource
+    else {
+        panic!("expected Server resource");
+    };
+    assert_eq!(friendly_name, "Prod Server 1");
+    assert_eq!(hostname, "192.168.1.100");
+    assert_eq!(connection_type, "ssh");
+    assert_eq!(connection_port, 22);
+    assert_eq!(zone, "zone-abc");
+    assert!(!enabled);
+    assert_eq!(connection_username.as_deref(), Some("kasm"));
+    assert_eq!(connection_info.as_deref(), Some("key-data"));
+    assert_eq!(max_simultaneous_sessions, Some(10));
+    assert_eq!(max_simultaneous_users, Some(5));
+    assert_eq!(pool_id.as_deref(), Some("pool-xyz"));
+}
+
+#[test]
+fn parse_create_server_missing_required_fails() {
+    // Missing --hostname
+    let result = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "server",
+        "--friendly-name",
+        "Prod Server 1",
+        "--connection-type",
+        "ssh",
+        "--connection-port",
+        "22",
+        "--zone",
+        "zone-abc",
+    ]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_create_server_enabled_defaults_to_true() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "server",
+        "--friendly-name",
+        "My Server",
+        "--hostname",
+        "10.0.0.1",
+        "--connection-type",
+        "rdp",
+        "--connection-port",
+        "3389",
+        "--zone",
+        "zone-abc",
+    ])
+    .unwrap();
+    let Command::Create(args) = cli.command else {
+        panic!("expected Create command");
+    };
+    let CreateResource::Server { enabled, .. } = args.resource else {
+        panic!("expected Server resource");
+    };
+    assert!(enabled);
+}
+
+// --- Update server ---
+
+#[test]
+fn parse_update_server_with_id_only() {
+    let cli = Cli::try_parse_from(["kasmctl", "update", "server", "srv-abc"]).unwrap();
+    let Command::Update(args) = cli.command else {
+        panic!("expected Update command");
+    };
+    let UpdateResource::Server { id, .. } = args.resource else {
+        panic!("expected Server resource");
+    };
+    assert_eq!(id, "srv-abc");
+}
+
+#[test]
+fn parse_update_server_missing_id_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "update", "server"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_update_server_with_all_flags() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "update",
+        "server",
+        "srv-abc",
+        "--friendly-name",
+        "Updated Server",
+        "--hostname",
+        "10.0.0.2",
+        "--enabled",
+        "true",
+        "--connection-type",
+        "rdp",
+        "--connection-port",
+        "3389",
+        "--connection-username",
+        "admin",
+        "--connection-info",
+        "password123",
+        "--max-simultaneous-sessions",
+        "20",
+        "--max-simultaneous-users",
+        "10",
+        "--zone-id",
+        "zone-xyz",
+        "--pool-id",
+        "pool-abc",
+    ])
+    .unwrap();
+    let Command::Update(args) = cli.command else {
+        panic!("expected Update command");
+    };
+    let UpdateResource::Server {
+        id,
+        friendly_name,
+        hostname,
+        enabled,
+        connection_type,
+        connection_port,
+        connection_username,
+        connection_info,
+        max_simultaneous_sessions,
+        max_simultaneous_users,
+        zone_id,
+        pool_id,
+    } = args.resource
+    else {
+        panic!("expected Server resource");
+    };
+    assert_eq!(id, "srv-abc");
+    assert_eq!(friendly_name.as_deref(), Some("Updated Server"));
+    assert_eq!(hostname.as_deref(), Some("10.0.0.2"));
+    assert_eq!(enabled, Some(true));
+    assert_eq!(connection_type.as_deref(), Some("rdp"));
+    assert_eq!(connection_port, Some(3389));
+    assert_eq!(connection_username.as_deref(), Some("admin"));
+    assert_eq!(connection_info.as_deref(), Some("password123"));
+    assert_eq!(max_simultaneous_sessions, Some(20));
+    assert_eq!(max_simultaneous_users, Some(10));
+    assert_eq!(zone_id.as_deref(), Some("zone-xyz"));
+    assert_eq!(pool_id.as_deref(), Some("pool-abc"));
+}
+
+#[test]
+fn parse_update_server_with_partial_flags() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "update",
+        "server",
+        "srv-abc",
+        "--friendly-name",
+        "New Name",
+        "--enabled",
+        "false",
+    ])
+    .unwrap();
+    let Command::Update(args) = cli.command else {
+        panic!("expected Update command");
+    };
+    let UpdateResource::Server {
+        id,
+        friendly_name,
+        hostname,
+        enabled,
+        ..
+    } = args.resource
+    else {
+        panic!("expected Server resource");
+    };
+    assert_eq!(id, "srv-abc");
+    assert_eq!(friendly_name.as_deref(), Some("New Name"));
+    assert!(hostname.is_none());
+    assert_eq!(enabled, Some(false));
+}
+
+// --- Delete server ---
+
+#[test]
+fn parse_delete_server() {
+    let cli = Cli::try_parse_from(["kasmctl", "delete", "server", "srv-abc"]).unwrap();
+    let Command::Delete(args) = cli.command else {
+        panic!("expected Delete command");
+    };
+    let DeleteResource::Server { id } = args.resource else {
+        panic!("expected Server resource");
+    };
+    assert_eq!(id, "srv-abc");
+}
+
+#[test]
+fn parse_delete_server_missing_id_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "delete", "server"]);
+    assert!(result.is_err());
+}

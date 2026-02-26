@@ -19,4 +19,9 @@ pub enum DeleteResource {
         /// Image ID to delete
         id: String,
     },
+    /// Delete a server
+    Server {
+        /// Server ID to delete
+        id: String,
+    },
 }
