@@ -6,6 +6,9 @@ A command-line tool for managing [Kasm Workspaces](https://kasm.com), inspired b
 
 - **Session management** — get, create, delete, stop, pause, and resume sessions
 - **Image management** — get, create, update, and delete workspace images
+- **Zone management** — list and inspect deployment zones
+- **Agent management** — list, inspect, and update docker agents
+- **Server management** — get, create, update, and delete servers
 - **Multi-context configuration** — manage multiple Kasm servers with kubeconfig-style contexts
 - **Flexible output** — table, JSON, and YAML output formats
 - **Shell completions** — generate completions for bash, zsh, fish, and more
@@ -149,6 +152,77 @@ kasmctl update image <IMAGE_ID> --friendly-name "New Name" --enabled false
 kasmctl delete image <IMAGE_ID>
 ```
 
+### List zones
+
+```sh
+kasmctl get zones
+kasmctl get zones --name "default"
+```
+
+### Get a specific zone
+
+```sh
+kasmctl get zone <ZONE_ID>
+```
+
+### List docker agents
+
+```sh
+kasmctl get agents
+kasmctl get agents --enabled
+kasmctl get agents --zone <ZONE_ID>
+```
+
+### Get a specific docker agent
+
+```sh
+kasmctl get agent <AGENT_ID>
+```
+
+### Update a docker agent
+
+```sh
+kasmctl update agent <AGENT_ID> --enabled false
+kasmctl update agent <AGENT_ID> --cores-override 4.0 --memory-override 8589934592
+```
+
+### List servers
+
+```sh
+kasmctl get servers
+kasmctl get servers --enabled
+kasmctl get servers --zone <ZONE_ID> --connection-type ssh
+```
+
+### Get a specific server
+
+```sh
+kasmctl get server <SERVER_ID>
+```
+
+### Create a server
+
+```sh
+kasmctl create server \
+  --friendly-name "My Server" \
+  --hostname 10.0.0.1 \
+  --connection-type ssh \
+  --connection-port 22 \
+  --zone <ZONE_ID>
+```
+
+### Update a server
+
+```sh
+kasmctl update server <SERVER_ID> --friendly-name "New Name" --enabled false
+```
+
+### Delete a server
+
+```sh
+kasmctl delete server <SERVER_ID>
+```
+
 ### Shell completions
 
 ```sh
@@ -183,8 +257,18 @@ kasmctl [OPTIONS] <COMMAND>
 | `create session --image <ID> [--user <ID>]` | Create a new session from a workspace image |
 | `create image --name <NAME> --friendly-name <NAME> [OPTIONS]` | Create a new workspace image |
 | `update image <ID> [OPTIONS]` | Update an existing workspace image |
+| `get zone <ID>` | Get details for a specific zone |
+| `get zones [FILTERS]` | List all zones, optionally filtered |
+| `get agent <ID>` | Get details for a specific docker agent |
+| `get agents [FILTERS]` | List all docker agents, optionally filtered |
+| `get server <ID>` | Get details for a specific server |
+| `get servers [FILTERS]` | List all servers, optionally filtered |
+| `create server --friendly-name <NAME> --hostname <HOST> --connection-type <TYPE> --connection-port <PORT> --zone <ZONE_ID>` | Create a new server |
+| `update agent <ID> [OPTIONS]` | Update a docker agent |
+| `update server <ID> [OPTIONS]` | Update an existing server |
 | `delete session <ID>` | Delete a session |
 | `delete image <ID>` | Delete an image |
+| `delete server <ID>` | Delete a server |
 | `stop session <ID>` | Stop a session (frees memory/CPU, keeps disk) |
 | `stop sessions [FILTERS] [-y]` | Stop multiple sessions matching filters |
 | `pause session <ID>` | Pause a session (retains memory, stops CPU) |
@@ -225,6 +309,37 @@ Multiple filters can be combined and are applied with AND logic.
 | `--name <NAME>` | Filter by friendly name (case-insensitive substring match) |
 | `--image-type <TYPE>` | Filter by image type / source (e.g. `Container`, `Server`) |
 
+### Zone filter options
+
+`get zones` accepts the following filters:
+
+| Option | Description |
+|---|---|
+| `--name <NAME>` | Filter by zone name (case-insensitive substring match) |
+
+### Agent filter options
+
+`get agents` accepts the following filters:
+
+| Option | Description |
+|---|---|
+| `--zone <ZONE>` | Filter by zone ID (exact match) |
+| `--enabled` | Only show enabled agents |
+| `--disabled` | Only show disabled agents |
+| `--status <STATUS>` | Filter by agent status (case-insensitive) |
+
+### Server filter options
+
+`get servers` accepts the following filters:
+
+| Option | Description |
+|---|---|
+| `--zone <ZONE>` | Filter by zone ID (exact match) |
+| `--connection-type <TYPE>` | Filter by connection type (case-insensitive exact match) |
+| `--enabled` | Only show enabled servers |
+| `--disabled` | Only show disabled servers |
+| `--name <NAME>` | Filter by friendly name (case-insensitive substring match) |
+
 ### Create image options
 
 `create image` requires `--name` and `--friendly-name`. All other options are optional:
@@ -261,6 +376,54 @@ Multiple filters can be combined and are applied with AND logic.
 | `--exec-config <JSON>` | Docker exec config override (JSON) |
 | `--hidden <BOOL>` | Hide the image from users |
 
+### Create server options
+
+`create server` requires `--friendly-name`, `--hostname`, `--connection-type`, `--connection-port`, and `--zone`. All other options are optional:
+
+| Option | Description |
+|---|---|
+| `--friendly-name <NAME>` | Human-readable name **(required)** |
+| `--hostname <HOST>` | Server hostname or IP **(required)** |
+| `--connection-type <TYPE>` | Connection type (ssh, rdp, vnc, kasmvnc) **(required)** |
+| `--connection-port <PORT>` | Connection port **(required)** |
+| `--zone <ZONE>` | Zone ID to assign the server to **(required)** |
+| `--enabled <BOOL>` | Whether the server is enabled (default: `true`) |
+| `--connection-username <USER>` | Connection username |
+| `--connection-info <INFO>` | Connection info/credentials |
+| `--max-simultaneous-sessions <N>` | Maximum simultaneous sessions |
+| `--max-simultaneous-users <N>` | Maximum simultaneous users |
+| `--pool-id <ID>` | Pool ID |
+
+### Update agent options
+
+`update agent <ID>` accepts any combination of the following options. Only specified fields are changed:
+
+| Option | Description |
+|---|---|
+| `--enabled <BOOL>` | Enable or disable the agent |
+| `--cores-override <CORES>` | Override CPU cores allocation |
+| `--memory-override <BYTES>` | Override memory allocation in bytes |
+| `--gpus-override <GPUS>` | Override GPU allocation |
+| `--auto-prune-images <POLICY>` | Auto-prune images policy |
+
+### Update server options
+
+`update server <ID>` accepts any combination of the following options. Only specified fields are changed:
+
+| Option | Description |
+|---|---|
+| `--friendly-name <NAME>` | Human-readable name |
+| `--hostname <HOST>` | Server hostname or IP |
+| `--enabled <BOOL>` | Enable or disable the server |
+| `--connection-type <TYPE>` | Connection type |
+| `--connection-port <PORT>` | Connection port |
+| `--connection-username <USER>` | Connection username |
+| `--connection-info <INFO>` | Connection info/credentials |
+| `--max-simultaneous-sessions <N>` | Maximum simultaneous sessions |
+| `--max-simultaneous-users <N>` | Maximum simultaneous users |
+| `--zone-id <ID>` | Zone ID |
+| `--pool-id <ID>` | Pool ID |
+
 ### Resource aliases
 
 Session resources accept `kasm` (singular) and `kasms` (plural) as aliases:
@@ -271,6 +434,14 @@ kasmctl get kasms             # same as: get sessions
 kasmctl stop kasm <ID>        # same as: stop session <ID>
 kasmctl stop kasms --status running  # same as: stop sessions --status running
 kasmctl delete kasm <ID>      # same as: delete session <ID>
+```
+
+Agent resources accept `docker-agent` (singular) and `docker-agents` (plural) as aliases:
+
+```sh
+kasmctl get docker-agent <ID>  # same as: get agent <ID>
+kasmctl get docker-agents      # same as: get agents
+kasmctl update docker-agent <ID> --enabled false  # same as: update agent <ID> --enabled false
 ```
 
 ## Configuration
