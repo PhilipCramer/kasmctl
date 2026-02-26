@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 
-use crate::cli::filters::{ImageFilters, SessionFilters};
+use crate::cli::filters::{ImageFilters, SessionFilters, ZoneFilters};
 
 #[derive(Args)]
 pub struct GetArgs {
@@ -34,5 +34,15 @@ pub enum GetResource {
     Images {
         #[command(flatten)]
         filters: ImageFilters,
+    },
+    /// Get a specific zone by ID
+    Zone {
+        /// Zone ID
+        id: String,
+    },
+    /// List all zones
+    Zones {
+        #[command(flatten)]
+        filters: ZoneFilters,
     },
 }

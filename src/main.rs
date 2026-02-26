@@ -82,6 +82,19 @@ fn handle_get(client: &KasmClient, resource: GetResource, format: &OutputFormat)
             filters.apply(&mut images);
             println!("{}", output::render_list(&images, format)?);
         }
+        GetResource::Zone { id } => {
+            let zones = client.get_zones().context("failed to list zones")?;
+            let zone = zones
+                .into_iter()
+                .find(|z| z.zone_id == id)
+                .ok_or_else(|| anyhow::anyhow!("zone {id:?} not found"))?;
+            println!("{}", output::render_one(&zone, format)?);
+        }
+        GetResource::Zones { filters } => {
+            let mut zones = client.get_zones().context("failed to list zones")?;
+            filters.apply(&mut zones);
+            println!("{}", output::render_list(&zones, format)?);
+        }
     }
     Ok(())
 }

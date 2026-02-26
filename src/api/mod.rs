@@ -1,6 +1,7 @@
 pub mod error;
 pub mod images;
 pub mod sessions;
+pub mod zones;
 
 use std::time::Duration;
 

@@ -1,5 +1,6 @@
 use kasmctl::models::image::Image;
 use kasmctl::models::session::{CreateSessionResponse, Session, SessionImage};
+use kasmctl::models::zone::Zone;
 use kasmctl::output::display::short_id;
 use kasmctl::resource::Resource;
 use proptest::prelude::*;
@@ -14,6 +15,10 @@ fn arb_option_bool() -> impl Strategy<Value = Option<bool>> {
 
 fn arb_option_f64() -> impl Strategy<Value = Option<f64>> {
     prop_oneof![Just(None), (10..160u32).prop_map(|v| Some(v as f64 / 10.0)),]
+}
+
+fn arb_option_i32() -> impl Strategy<Value = Option<i32>> {
+    prop_oneof![Just(None), (1..65535i32).prop_map(Some),]
 }
 
 fn arb_option_memory() -> impl Strategy<Value = Option<i64>> {
@@ -590,4 +595,221 @@ fn image_memory_format_bytes_raw() {
     };
     let row = image.table_row();
     assert_eq!(row[5], "12345");
+}
+
+// ===================== Zone =====================
+
+fn arb_zone() -> impl Strategy<Value = Zone> {
+    (
+        "[a-zA-Z0-9-]{1,36}",
+        arb_option_string(),
+        arb_option_string(),
+        arb_option_string(),
+        arb_option_string(),
+        arb_option_bool(),
+        arb_option_bool(),
+        arb_option_bool(),
+        arb_option_string(),
+        arb_option_string(),
+        arb_option_i32(),
+    )
+        .prop_map(
+            |(
+                zone_id,
+                zone_name,
+                allow_origin_domain,
+                upstream_auth_address,
+                load_balancing_strategy,
+                search_alternate_zones,
+                prioritize_static_agents,
+                proxy_connections,
+                proxy_hostname,
+                proxy_path,
+                proxy_port,
+            )| {
+                Zone {
+                    zone_id,
+                    zone_name,
+                    allow_origin_domain,
+                    upstream_auth_address,
+                    load_balancing_strategy,
+                    search_alternate_zones,
+                    prioritize_static_agents,
+                    proxy_connections,
+                    proxy_hostname,
+                    proxy_path,
+                    proxy_port,
+                }
+            },
+        )
+}
+
+proptest! {
+    #[test]
+    fn zone_serde_roundtrip(zone in arb_zone()) {
+        let json = serde_json::to_string(&zone).unwrap();
+        let deserialized: Zone = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(zone, deserialized);
+    }
+
+    #[test]
+    fn zone_table_row_length_matches_headers(zone in arb_zone()) {
+        let headers = Zone::table_headers();
+        let row = zone.table_row();
+        prop_assert_eq!(row.len(), headers.len());
+    }
+
+    #[test]
+    fn zone_table_row_first_column_is_zone_id(zone in arb_zone()) {
+        let row = zone.table_row();
+        prop_assert_eq!(&row[0], short_id(&zone.zone_id));
+    }
+
+    #[test]
+    fn zone_table_row_none_fields_become_empty_string(zone in arb_zone()) {
+        let row = zone.table_row();
+        if zone.zone_name.is_none() {
+            prop_assert_eq!(&row[1], "");
+        }
+        if zone.load_balancing_strategy.is_none() {
+            prop_assert_eq!(&row[2], "");
+        }
+        if zone.proxy_connections.is_none() {
+            prop_assert_eq!(&row[3], "");
+        }
+    }
+
+    #[test]
+    fn zone_table_detail_contains_zone_id(zone in arb_zone()) {
+        let detail = zone.table_detail();
+        let entry = detail.iter().find(|(k, _)| *k == "ZONE ID");
+        prop_assert!(entry.is_some());
+        prop_assert_eq!(&entry.unwrap().1, &zone.zone_id);
+    }
+
+    #[test]
+    fn zone_table_detail_none_fields_become_empty_string(zone in arb_zone()) {
+        let detail = zone.table_detail();
+        let lookup = |label: &str| detail.iter().find(|(k, _)| *k == label).map(|(_, v)| v.clone());
+        if zone.zone_name.is_none() {
+            let val = lookup("ZONE NAME");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if zone.allow_origin_domain.is_none() {
+            let val = lookup("ALLOW ORIGIN DOMAIN");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if zone.upstream_auth_address.is_none() {
+            let val = lookup("UPSTREAM AUTH ADDRESS");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if zone.load_balancing_strategy.is_none() {
+            let val = lookup("LOAD BALANCING STRATEGY");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if zone.search_alternate_zones.is_none() {
+            let val = lookup("SEARCH ALTERNATE ZONES");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if zone.prioritize_static_agents.is_none() {
+            let val = lookup("PRIORITIZE STATIC AGENTS");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if zone.proxy_connections.is_none() {
+            let val = lookup("PROXY CONNECTIONS");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if zone.proxy_hostname.is_none() {
+            let val = lookup("PROXY HOSTNAME");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if zone.proxy_path.is_none() {
+            let val = lookup("PROXY PATH");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+        if zone.proxy_port.is_none() {
+            let val = lookup("PROXY PORT");
+            prop_assert_eq!(val.as_deref(), Some(""));
+        }
+    }
+}
+
+#[test]
+fn zone_resource_name_is_zone() {
+    assert_eq!(Zone::resource_name(), "Zone");
+}
+
+#[test]
+fn zone_table_headers_are_correct() {
+    assert_eq!(
+        Zone::table_headers(),
+        vec!["ZONE ID", "NAME", "LOAD BALANCING", "PROXY"]
+    );
+}
+
+#[test]
+fn zone_table_detail_has_all_labels() {
+    let expected_labels = vec![
+        "ZONE ID",
+        "ZONE NAME",
+        "ALLOW ORIGIN DOMAIN",
+        "UPSTREAM AUTH ADDRESS",
+        "LOAD BALANCING STRATEGY",
+        "SEARCH ALTERNATE ZONES",
+        "PRIORITIZE STATIC AGENTS",
+        "PROXY CONNECTIONS",
+        "PROXY HOSTNAME",
+        "PROXY PATH",
+        "PROXY PORT",
+    ];
+    let zone = Zone {
+        zone_id: "test-id".into(),
+        ..Default::default()
+    };
+    let detail = zone.table_detail();
+    let labels: Vec<&str> = detail.iter().map(|(k, _)| *k).collect();
+    assert_eq!(labels, expected_labels);
+}
+
+#[test]
+fn zone_table_detail_contains_field_values() {
+    let zone = Zone {
+        zone_id: "zone-abc".into(),
+        zone_name: Some("us-east".into()),
+        allow_origin_domain: Some("example.com".into()),
+        upstream_auth_address: Some("10.0.0.1".into()),
+        load_balancing_strategy: Some("round_robin".into()),
+        search_alternate_zones: Some(true),
+        prioritize_static_agents: Some(false),
+        proxy_connections: Some(true),
+        proxy_hostname: Some("proxy.example.com".into()),
+        proxy_path: Some("/kasm".into()),
+        proxy_port: Some(8080),
+    };
+    let detail = zone.table_detail();
+    let lookup = |label: &str| {
+        detail
+            .iter()
+            .find(|(k, _)| *k == label)
+            .map(|(_, v)| v.clone())
+            .unwrap()
+    };
+    assert_eq!(lookup("ZONE ID"), "zone-abc");
+    assert_eq!(lookup("ZONE NAME"), "us-east");
+    assert_eq!(lookup("ALLOW ORIGIN DOMAIN"), "example.com");
+    assert_eq!(lookup("UPSTREAM AUTH ADDRESS"), "10.0.0.1");
+    assert_eq!(lookup("LOAD BALANCING STRATEGY"), "round_robin");
+    assert_eq!(lookup("SEARCH ALTERNATE ZONES"), "true");
+    assert_eq!(lookup("PRIORITIZE STATIC AGENTS"), "false");
+    assert_eq!(lookup("PROXY CONNECTIONS"), "true");
+    assert_eq!(lookup("PROXY HOSTNAME"), "proxy.example.com");
+    assert_eq!(lookup("PROXY PATH"), "/kasm");
+    assert_eq!(lookup("PROXY PORT"), "8080");
+}
+
+#[test]
+fn deserialize_missing_required_zone_id_fails() {
+    let json = r#"{"zone_name": "us-east"}"#;
+    let result = serde_json::from_str::<Zone>(json);
+    assert!(result.is_err());
 }
