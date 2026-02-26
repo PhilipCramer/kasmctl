@@ -6,6 +6,7 @@ use clap_complete::generate;
 use comfy_table::{Table, presets::UTF8_FULL_CONDENSED};
 
 use kasmctl::api::KasmClient;
+use kasmctl::api::agents::UpdateAgentRequest;
 use kasmctl::api::images::UpdateImageRequest;
 use kasmctl::cli::config_cmd::ConfigCommand;
 use kasmctl::cli::verbs::create::CreateResource;
@@ -94,6 +95,19 @@ fn handle_get(client: &KasmClient, resource: GetResource, format: &OutputFormat)
             let mut zones = client.get_zones().context("failed to list zones")?;
             filters.apply(&mut zones);
             println!("{}", output::render_list(&zones, format)?);
+        }
+        GetResource::Agent { id } => {
+            let agents = client.get_agents().context("failed to list agents")?;
+            let agent = agents
+                .into_iter()
+                .find(|a| a.agent_id == id)
+                .ok_or_else(|| anyhow::anyhow!("agent {id:?} not found"))?;
+            println!("{}", output::render_one(&agent, format)?);
+        }
+        GetResource::Agents { filters } => {
+            let mut agents = client.get_agents().context("failed to list agents")?;
+            filters.apply(&mut agents);
+            println!("{}", output::render_list(&agents, format)?);
         }
     }
     Ok(())
@@ -217,6 +231,27 @@ fn handle_update(
                 .update_image(&req)
                 .context("failed to update image")?;
             println!("{}", output::render_one(&image, format)?);
+        }
+        UpdateResource::Agent {
+            id,
+            enabled,
+            cores_override,
+            memory_override,
+            gpus_override,
+            auto_prune_images,
+        } => {
+            let req = UpdateAgentRequest {
+                agent_id: id,
+                enabled,
+                cores_override,
+                memory_override,
+                gpus_override,
+                auto_prune_images,
+            };
+            let agent = client
+                .update_agent(&req)
+                .context("failed to update agent")?;
+            println!("{}", output::render_one(&agent, format)?);
         }
     }
     Ok(())

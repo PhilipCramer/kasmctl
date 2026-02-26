@@ -57,4 +57,30 @@ pub enum UpdateResource {
         #[arg(long)]
         hidden: Option<bool>,
     },
+    /// Update a docker agent
+    #[command(alias = "docker-agent")]
+    Agent {
+        /// Agent ID to update
+        id: String,
+
+        /// Enable or disable the agent
+        #[arg(long)]
+        enabled: Option<bool>,
+
+        /// Override CPU cores allocation
+        #[arg(long)]
+        cores_override: Option<f64>,
+
+        /// Override memory allocation in bytes
+        #[arg(long)]
+        memory_override: Option<i64>,
+
+        /// Override GPU allocation
+        #[arg(long)]
+        gpus_override: Option<f64>,
+
+        /// Auto-prune images policy
+        #[arg(long)]
+        auto_prune_images: Option<String>,
+    },
 }

@@ -2,6 +2,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use clap::Args;
 
+use crate::models::agent::Agent;
 use crate::models::image::Image;
 use crate::models::session::Session;
 use crate::models::zone::Zone;
@@ -224,6 +225,64 @@ impl ZoneFilters {
                 && z.zone_name
                     .as_ref()
                     .is_none_or(|n| !n.to_lowercase().contains(pattern.as_str()))
+            {
+                return false;
+            }
+
+            true
+        });
+    }
+}
+
+/// Shared filter options for agent list commands.
+#[derive(Args, Clone, Debug, Default)]
+pub struct AgentFilters {
+    /// Filter by zone ID (exact match)
+    #[arg(long)]
+    pub zone: Option<String>,
+
+    /// Only show enabled agents
+    #[arg(long, conflicts_with = "disabled")]
+    pub enabled: bool,
+
+    /// Only show disabled agents
+    #[arg(long, conflicts_with = "enabled")]
+    pub disabled: bool,
+
+    /// Filter by agent status (case-insensitive)
+    #[arg(long)]
+    pub status: Option<String>,
+}
+
+impl AgentFilters {
+    /// Returns true when no filters are set.
+    pub fn is_empty(&self) -> bool {
+        self.zone.is_none() && !self.enabled && !self.disabled && self.status.is_none()
+    }
+
+    /// Apply all filters to a list of agents, removing non-matching entries.
+    pub fn apply(&self, agents: &mut Vec<Agent>) {
+        let status_lower = self.status.as_ref().map(|s| s.to_lowercase());
+
+        agents.retain(|a| {
+            if let Some(ref zone_id) = self.zone
+                && a.zone_id.as_deref() != Some(zone_id.as_str())
+            {
+                return false;
+            }
+
+            if self.enabled && a.enabled != Some(true) {
+                return false;
+            }
+
+            if self.disabled && a.enabled != Some(false) {
+                return false;
+            }
+
+            if let Some(ref status) = status_lower
+                && a.status
+                    .as_ref()
+                    .is_none_or(|s| s.to_lowercase() != *status)
             {
                 return false;
             }

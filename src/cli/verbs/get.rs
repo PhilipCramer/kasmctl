@@ -1,6 +1,6 @@
 use clap::{Args, Subcommand};
 
-use crate::cli::filters::{ImageFilters, SessionFilters, ZoneFilters};
+use crate::cli::filters::{AgentFilters, ImageFilters, SessionFilters, ZoneFilters};
 
 #[derive(Args)]
 pub struct GetArgs {
@@ -44,5 +44,17 @@ pub enum GetResource {
     Zones {
         #[command(flatten)]
         filters: ZoneFilters,
+    },
+    /// Get a specific docker agent by ID
+    #[command(alias = "docker-agent")]
+    Agent {
+        /// Agent ID
+        id: String,
+    },
+    /// List all docker agents
+    #[command(alias = "docker-agents")]
+    Agents {
+        #[command(flatten)]
+        filters: AgentFilters,
     },
 }

@@ -306,6 +306,228 @@ fn parse_get_zones_with_name_filter() {
     assert!(!filters.is_empty());
 }
 
+// --- Get agents ---
+
+#[test]
+fn parse_get_agents() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "agents"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Agents { filters } = args.resource else {
+        panic!("expected Agents resource");
+    };
+    assert!(filters.is_empty());
+}
+
+#[test]
+fn parse_get_agent_by_id() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "agent", "agent-abc"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Agent { id } = args.resource else {
+        panic!("expected Agent resource");
+    };
+    assert_eq!(id, "agent-abc");
+}
+
+#[test]
+fn parse_get_docker_agent_alias() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "docker-agent", "agent-abc"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Agent { id } = args.resource else {
+        panic!("expected Agent resource");
+    };
+    assert_eq!(id, "agent-abc");
+}
+
+#[test]
+fn parse_get_docker_agents_alias() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "docker-agents"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    assert!(matches!(args.resource, GetResource::Agents { .. }));
+}
+
+#[test]
+fn parse_get_agent_requires_id() {
+    let result = Cli::try_parse_from(["kasmctl", "get", "agent"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_get_agents_positional_id_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "get", "agents", "agent-abc"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_get_agents_with_zone_filter() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "agents", "--zone", "zone-123"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Agents { filters } = args.resource else {
+        panic!("expected Agents resource");
+    };
+    assert_eq!(filters.zone.as_deref(), Some("zone-123"));
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_agents_with_enabled_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "agents", "--enabled"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Agents { filters } = args.resource else {
+        panic!("expected Agents resource");
+    };
+    assert!(filters.enabled);
+    assert!(!filters.disabled);
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_agents_with_disabled_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "agents", "--disabled"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Agents { filters } = args.resource else {
+        panic!("expected Agents resource");
+    };
+    assert!(!filters.enabled);
+    assert!(filters.disabled);
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_agents_enabled_disabled_conflict() {
+    let result = Cli::try_parse_from(["kasmctl", "get", "agents", "--enabled", "--disabled"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_get_agents_with_status_filter() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "agents", "--status", "running"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Agents { filters } = args.resource else {
+        panic!("expected Agents resource");
+    };
+    assert_eq!(filters.status.as_deref(), Some("running"));
+    assert!(!filters.is_empty());
+}
+
+// --- Update agent ---
+
+#[test]
+fn parse_update_agent_with_id_only() {
+    let cli = Cli::try_parse_from(["kasmctl", "update", "agent", "agent-abc"]).unwrap();
+    let Command::Update(args) = cli.command else {
+        panic!("expected Update command");
+    };
+    let UpdateResource::Agent { id, .. } = args.resource else {
+        panic!("expected Agent resource");
+    };
+    assert_eq!(id, "agent-abc");
+}
+
+#[test]
+fn parse_update_docker_agent_alias() {
+    let cli = Cli::try_parse_from(["kasmctl", "update", "docker-agent", "agent-abc"]).unwrap();
+    let Command::Update(args) = cli.command else {
+        panic!("expected Update command");
+    };
+    assert!(matches!(args.resource, UpdateResource::Agent { .. }));
+}
+
+#[test]
+fn parse_update_agent_missing_id_fails() {
+    let result = Cli::try_parse_from(["kasmctl", "update", "agent"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_update_agent_with_all_flags() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "update",
+        "agent",
+        "agent-abc",
+        "--enabled",
+        "false",
+        "--cores-override",
+        "4.0",
+        "--memory-override",
+        "4294967296",
+        "--gpus-override",
+        "1.0",
+        "--auto-prune-images",
+        "daily",
+    ])
+    .unwrap();
+    let Command::Update(args) = cli.command else {
+        panic!("expected Update command");
+    };
+    let UpdateResource::Agent {
+        id,
+        enabled,
+        cores_override,
+        memory_override,
+        gpus_override,
+        auto_prune_images,
+    } = args.resource
+    else {
+        panic!("expected Agent resource");
+    };
+    assert_eq!(id, "agent-abc");
+    assert_eq!(enabled, Some(false));
+    assert_eq!(cores_override, Some(4.0));
+    assert_eq!(memory_override, Some(4294967296));
+    assert_eq!(gpus_override, Some(1.0));
+    assert_eq!(auto_prune_images.as_deref(), Some("daily"));
+}
+
+#[test]
+fn parse_update_agent_with_partial_flags() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "update",
+        "agent",
+        "agent-abc",
+        "--enabled",
+        "true",
+    ])
+    .unwrap();
+    let Command::Update(args) = cli.command else {
+        panic!("expected Update command");
+    };
+    let UpdateResource::Agent {
+        id,
+        enabled,
+        cores_override,
+        memory_override,
+        gpus_override,
+        auto_prune_images,
+    } = args.resource
+    else {
+        panic!("expected Agent resource");
+    };
+    assert_eq!(id, "agent-abc");
+    assert_eq!(enabled, Some(true));
+    assert!(cores_override.is_none());
+    assert!(memory_override.is_none());
+    assert!(gpus_override.is_none());
+    assert!(auto_prune_images.is_none());
+}
+
 // --- Create commands ---
 
 #[test]
@@ -1254,7 +1476,9 @@ fn parse_update_image_with_id_only() {
     let Command::Update(args) = cli.command else {
         panic!("expected Update command");
     };
-    let UpdateResource::Image { id, .. } = args.resource;
+    let UpdateResource::Image { id, .. } = args.resource else {
+        panic!("expected Image resource");
+    };
     assert_eq!(id, "img-abc");
 }
 
@@ -1311,7 +1535,10 @@ fn parse_update_image_with_all_flags() {
         run_config,
         exec_config,
         hidden,
-    } = args.resource;
+    } = args.resource
+    else {
+        panic!("expected Image resource");
+    };
     assert_eq!(id, "img-abc");
     assert_eq!(name.as_deref(), Some("kasmweb/ubuntu:1.18.0"));
     assert_eq!(friendly_name.as_deref(), Some("Ubuntu Desktop"));
@@ -1351,7 +1578,10 @@ fn parse_update_image_with_partial_flags() {
         friendly_name,
         enabled,
         ..
-    } = args.resource;
+    } = args.resource
+    else {
+        panic!("expected Image resource");
+    };
     assert_eq!(id, "img-abc");
     assert!(name.is_none());
     assert_eq!(friendly_name.as_deref(), Some("New Name"));

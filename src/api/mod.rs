@@ -1,3 +1,4 @@
+pub mod agents;
 pub mod error;
 pub mod images;
 pub mod sessions;
