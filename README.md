@@ -30,15 +30,29 @@ The installer automatically detects your platform, downloads the latest release,
 | `KASMCTL_VERSION` | Version to install (e.g. `0.1.0`) | latest |
 | `KASMCTL_INSTALL` | Install directory | `/usr/local/bin` |
 
+#### Debian/Ubuntu (.deb)
+
+Download the `.deb` package for your architecture from the [latest release](https://github.com/PhilipCramer/kasmctl/releases/latest):
+
+```sh
+# amd64
+sudo dpkg -i kasmctl_*_amd64.deb
+
+# arm64
+sudo dpkg -i kasmctl_*_arm64.deb
+```
+
+The `.deb` package installs the binary to `/usr/bin/` and shell completions for bash, zsh, and fish.
+
 #### Manual download
 
 Download the archive for your platform from the [latest release](https://github.com/PhilipCramer/kasmctl/releases/latest):
 
 | Platform | Archive |
 |---|---|
-| Linux x86_64 | `kasmctl-linux-amd64.tar.gz` |
+| Linux x86_64 (.deb) | `kasmctl_<version>-1_amd64.deb` |
 | Linux x86_64 (static/musl) | `kasmctl-linux-amd64-musl.tar.gz` |
-| Linux ARM64 | `kasmctl-linux-arm64.tar.gz` |
+| Linux ARM64 (.deb) | `kasmctl_<version>-1_arm64.deb` |
 | Linux ARM64 (static/musl) | `kasmctl-linux-arm64-musl.tar.gz` |
 | macOS Intel | `kasmctl-darwin-amd64.tar.gz` |
 | macOS Apple Silicon | `kasmctl-darwin-arm64.tar.gz` |

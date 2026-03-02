@@ -19,10 +19,12 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             runner: ubuntu-latest
             artifact: kasmctl-linux-amd64
+            deb: true
           - target: aarch64-unknown-linux-gnu
             runner: ubuntu-latest
             artifact: kasmctl-linux-arm64
             cross: true
+            deb: true
           - target: x86_64-unknown-linux-musl
             runner: ubuntu-latest
             artifact: kasmctl-linux-amd64-musl
@@ -63,15 +65,46 @@ jobs:
           fi
 
       - name: Package binary
+        if: ${{ !matrix.deb }}
         run: |
           cp target/${{ matrix.target }}/release/kasmctl kasmctl
           tar czf ${{ matrix.artifact }}.tar.gz kasmctl
 
       - name: Upload artifact
+        if: ${{ !matrix.deb }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}.tar.gz
+
+      - name: Generate shell completions
+        if: matrix.deb
+        run: |
+          mkdir -p completions
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cargo build --release
+            COMP_BIN=target/release/kasmctl
+          else
+            COMP_BIN=target/${{ matrix.target }}/release/kasmctl
+          fi
+          $COMP_BIN completion bash > completions/kasmctl.bash
+          $COMP_BIN completion zsh > completions/_kasmctl
+          $COMP_BIN completion fish > completions/kasmctl.fish
+
+      - name: Install cargo-deb
+        if: matrix.deb
+        run: cargo install cargo-deb --locked
+
+      - name: Build deb package
+        if: matrix.deb
+        run: cargo deb --no-build --target=${{ matrix.target }}
+
+      - name: Upload deb artifact
+        if: matrix.deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}-deb
+          path: target/${{ matrix.target }}/debian/*.deb
 
   release:
     name: Create Release
@@ -87,7 +120,7 @@ jobs:
       - name: Generate checksums
         run: |
           cd artifacts
-          sha256sum *.tar.gz > checksums-sha256.txt
+          sha256sum *.tar.gz *.deb > checksums-sha256.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -95,4 +128,5 @@ jobs:
           generate_release_notes: true
           files: |
             artifacts/*.tar.gz
+            artifacts/*.deb
             artifacts/checksums-sha256.txt
