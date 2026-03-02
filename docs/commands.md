@@ -47,6 +47,9 @@ kasmctl [OPTIONS] <COMMAND>
 | `config set-context <NAME>` | Add or update a context |
 | `config use-context <NAME>` | Switch the active context |
 | `config get-contexts` | List all configured contexts |
+| `health` | Check connectivity and authentication to the Kasm server |
+| `top` | Show deployment summary: sessions, users, errors, and agent resources |
+| `top agents` | Show agent resource utilization only |
 | `completion <SHELL>` | Generate shell completions (bash, zsh, fish, etc.) |
 
 ## Resource Aliases
