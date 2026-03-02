@@ -25,3 +25,18 @@ directories = "5"
 proptest = "1"
 mockito = "1"
 tempfile = "3"
+
+[package.metadata.deb]
+maintainer = "Philip Cramer"
+copyright = "2026 Philip Cramer"
+license-file = ["LICENSE", "0"]
+extended-description = "A command-line tool for managing Kasm Workspaces, inspired by kubectl. Supports session, image, zone, agent, and server management with multi-context configuration."
+section = "utility"
+priority = "optional"
+depends = "$auto"
+assets = [
+    ["target/release/kasmctl", "usr/bin/", "755"],
+    ["completions/kasmctl.bash", "usr/share/bash-completion/completions/kasmctl", "644"],
+    ["completions/_kasmctl", "usr/share/zsh/vendor-completions/_kasmctl", "644"],
+    ["completions/kasmctl.fish", "usr/share/fish/vendor_completions.d/kasmctl.fish", "644"],
+]
