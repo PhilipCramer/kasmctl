@@ -1,4 +1,5 @@
 use std::io;
+use std::time::Instant;
 
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser};
@@ -16,11 +17,13 @@ use kasmctl::cli::verbs::get::GetResource;
 use kasmctl::cli::verbs::pause::PauseResource;
 use kasmctl::cli::verbs::resume::ResumeResource;
 use kasmctl::cli::verbs::stop::StopResource;
+use kasmctl::cli::verbs::top::TopCommand;
 use kasmctl::cli::verbs::update::UpdateResource;
 use kasmctl::cli::{Cli, Command};
 use kasmctl::config::model::{Context as KasmContext, NamedContext};
 use kasmctl::config::{load_config, save_config};
 use kasmctl::confirm;
+use kasmctl::models::report::{HealthStatus, TopOverview};
 use kasmctl::output::{self, OutputFormat};
 
 fn main() -> Result<()> {
@@ -41,6 +44,18 @@ fn main() -> Result<()> {
             )?;
             let client = KasmClient::new(&ctx)?;
 
+            let context_name = if cli.server.is_some() {
+                "(inline)".to_string()
+            } else if let Some(name) = &cli.context {
+                name.clone()
+            } else if let Ok(config) = load_config() {
+                config
+                    .current_context
+                    .unwrap_or_else(|| "(unknown)".to_string())
+            } else {
+                "(unknown)".to_string()
+            };
+
             match cmd {
                 Command::Get(args) => handle_get(&client, args.resource, &cli.output),
                 Command::Create(args) => handle_create(&client, args.resource, &cli.output),
@@ -49,6 +64,8 @@ fn main() -> Result<()> {
                 Command::Pause(args) => handle_pause(&client, args.resource),
                 Command::Resume(args) => handle_resume(&client, args.resource),
                 Command::Update(args) => handle_update(&client, args.resource, &cli.output),
+                Command::Health => handle_health(&client, &ctx, &context_name, &cli.output),
+                Command::Top(args) => handle_top(&client, args.command, &cli.output),
                 Command::Config(_) | Command::Completion { .. } => unreachable!(),
             }
         }
@@ -537,6 +554,132 @@ fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<()> {
             );
             if failed > 0 {
                 anyhow::bail!("{failed} session(s) failed to resume");
+            }
+        }
+    }
+    Ok(())
+}
+
+fn handle_health(
+    client: &KasmClient,
+    ctx: &KasmContext,
+    context_name: &str,
+    format: &OutputFormat,
+) -> Result<()> {
+    let start = Instant::now();
+    match client.get_report("current_kasms", None, None) {
+        Ok(report) => {
+            let elapsed = start.elapsed().as_millis() as u64;
+            let health = HealthStatus {
+                server: ctx.server.clone(),
+                context: context_name.to_string(),
+                status: "OK".to_string(),
+                error: None,
+                latency_ms: Some(elapsed),
+                sessions: report.as_u64(),
+            };
+            print_health(&health, format)?;
+        }
+        Err(e) => {
+            let health = HealthStatus {
+                server: ctx.server.clone(),
+                context: context_name.to_string(),
+                status: "ERROR".to_string(),
+                error: Some(e.to_string()),
+                latency_ms: None,
+                sessions: None,
+            };
+            print_health(&health, format)?;
+            std::process::exit(1);
+        }
+    }
+    Ok(())
+}
+
+fn print_health(health: &HealthStatus, format: &OutputFormat) -> Result<()> {
+    match format {
+        OutputFormat::Table => {
+            println!("Server:    {}", health.server);
+            println!("Context:   {}", health.context);
+            println!("Status:    {}", health.status);
+            if let Some(ms) = health.latency_ms {
+                println!("Latency:   {ms}ms");
+            }
+            if let Some(n) = health.sessions {
+                println!("Sessions:  {n} running");
+            }
+            if let Some(err) = &health.error {
+                println!("Error:     {err}");
+            }
+        }
+        OutputFormat::Json => {
+            println!("{}", serde_json::to_string_pretty(health)?);
+        }
+        OutputFormat::Yaml => {
+            println!("{}", serde_yaml::to_string(health)?);
+        }
+    }
+    Ok(())
+}
+
+fn handle_top(
+    client: &KasmClient,
+    command: Option<TopCommand>,
+    format: &OutputFormat,
+) -> Result<()> {
+    match command {
+        Some(TopCommand::Agents) => {
+            let agents = client
+                .get_agent_report()
+                .context("failed to get agent report")?;
+            println!("{}", output::render_list(&agents, format)?);
+        }
+        None => {
+            let sessions = client
+                .get_report("current_kasms", None, None)
+                .context("failed to get session count")?
+                .as_u64()
+                .unwrap_or(0);
+            let users = client
+                .get_report("current_users", None, None)
+                .context("failed to get user count")?
+                .as_u64()
+                .unwrap_or(0);
+            let errors = client
+                .get_report("get_errors", Some(86400), None)
+                .context("failed to get error count")?
+                .as_u64()
+                .unwrap_or(0);
+            let agents = client
+                .get_agent_report()
+                .context("failed to get agent report")?;
+
+            match format {
+                OutputFormat::Table => {
+                    println!(
+                        "Sessions: {sessions} running    Users: {users} connected    Errors: {errors} (24h)"
+                    );
+                    println!();
+                    println!("{}", output::render_list(&agents, format)?);
+                }
+                OutputFormat::Json => {
+                    let overview = TopOverview {
+                        sessions,
+                        users,
+                        errors,
+                        agents,
+                    };
+                    println!("{}", serde_json::to_string_pretty(&overview)?);
+                }
+                OutputFormat::Yaml => {
+                    let overview = TopOverview {
+                        sessions,
+                        users,
+                        errors,
+                        agents,
+                    };
+                    println!("{}", serde_yaml::to_string(&overview)?);
+                }
             }
         }
     }

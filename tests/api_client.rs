@@ -1280,3 +1280,146 @@ fn url_construction_without_trailing_slash() {
 
     mock.assert();
 }
+
+// ===================== get_report =====================
+
+#[test]
+fn get_report_current_kasms_success() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/get_report")
+        .with_status(200)
+        .with_body(r#"{"data": 23}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let report = client.get_report("current_kasms", None, None).unwrap();
+
+    assert_eq!(report.as_u64(), Some(23));
+    mock.assert();
+}
+
+#[test]
+fn get_report_sends_name_field() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/get_report")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"name":"current_kasms"}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{"data": 5}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    client.get_report("current_kasms", None, None).unwrap();
+
+    mock.assert();
+}
+
+#[test]
+fn get_report_injects_auth_credentials() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/get_report")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"api_key":"test-key","api_key_secret":"test-secret"}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{"data": 0}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    client.get_report("current_kasms", None, None).unwrap();
+
+    mock.assert();
+}
+
+#[test]
+fn get_report_api_error() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_report")
+        .with_status(200)
+        .with_body(r#"{"error_message":"unauthorized"}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.get_report("current_kasms", None, None);
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(err.contains("unauthorized"), "error was: {err}");
+}
+
+// ===================== get_agent_report =====================
+
+#[test]
+fn get_agent_report_success() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/get_agent_report")
+        .with_status(200)
+        .with_body(
+            r#"{"agents":[
+                {"name":"web-prod-1","health":"Healthy","kasms":12,"memory_total":34359738368,"memory_used":5583457280},
+                {"name":"web-prod-2","health":"Unhealthy"}
+            ]}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let agents = client.get_agent_report().unwrap();
+
+    assert_eq!(agents.len(), 2);
+    assert_eq!(agents[0].name, "web-prod-1");
+    assert_eq!(agents[0].health.as_deref(), Some("Healthy"));
+    assert_eq!(agents[0].kasms, Some(12));
+    assert_eq!(agents[0].memory_total, Some(34359738368));
+    assert_eq!(agents[0].memory_used, Some(5583457280));
+    assert_eq!(agents[1].name, "web-prod-2");
+    assert_eq!(agents[1].health.as_deref(), Some("Unhealthy"));
+    assert_eq!(agents[1].kasms, None);
+
+    mock.assert();
+}
+
+#[test]
+fn get_agent_report_empty_list() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/admin/get_agent_report")
+        .with_status(200)
+        .with_body(r#"{"agents":[]}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let agents = client.get_agent_report().unwrap();
+
+    assert!(agents.is_empty());
+    mock.assert();
+}
+
+#[test]
+fn get_agent_report_api_error() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_agent_report")
+        .with_status(200)
+        .with_body(r#"{"error_message":"permission denied"}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.get_agent_report();
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(err.contains("permission denied"), "error was: {err}");
+}

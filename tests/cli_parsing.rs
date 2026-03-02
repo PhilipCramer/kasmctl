@@ -7,6 +7,7 @@ use kasmctl::cli::verbs::get::GetResource;
 use kasmctl::cli::verbs::pause::PauseResource;
 use kasmctl::cli::verbs::resume::ResumeResource;
 use kasmctl::cli::verbs::stop::StopResource;
+use kasmctl::cli::verbs::top::TopCommand;
 use kasmctl::cli::verbs::update::UpdateResource;
 use kasmctl::cli::{Cli, Command};
 use kasmctl::output::OutputFormat;
@@ -1991,5 +1992,68 @@ fn parse_delete_server() {
 #[test]
 fn parse_delete_server_missing_id_fails() {
     let result = Cli::try_parse_from(["kasmctl", "delete", "server"]);
+    assert!(result.is_err());
+}
+
+// --- Health commands ---
+
+#[test]
+fn parse_health() {
+    let cli = Cli::try_parse_from(["kasmctl", "health"]).unwrap();
+    assert!(matches!(cli.command, Command::Health));
+}
+
+#[test]
+fn parse_health_with_output_json() {
+    let cli = Cli::try_parse_from(["kasmctl", "health", "-o", "json"]).unwrap();
+    assert!(matches!(cli.command, Command::Health));
+    assert!(matches!(cli.output, OutputFormat::Json));
+}
+
+#[test]
+fn parse_health_with_context() {
+    let cli = Cli::try_parse_from(["kasmctl", "health", "--context", "prod"]).unwrap();
+    assert!(matches!(cli.command, Command::Health));
+    assert_eq!(cli.context.as_deref(), Some("prod"));
+}
+
+#[test]
+fn parse_health_rejects_subcommand() {
+    let result = Cli::try_parse_from(["kasmctl", "health", "extra"]);
+    assert!(result.is_err());
+}
+
+// --- Top commands ---
+
+#[test]
+fn parse_top() {
+    let cli = Cli::try_parse_from(["kasmctl", "top"]).unwrap();
+    let Command::Top(args) = cli.command else {
+        panic!("expected Top command");
+    };
+    assert!(args.command.is_none());
+}
+
+#[test]
+fn parse_top_agents() {
+    let cli = Cli::try_parse_from(["kasmctl", "top", "agents"]).unwrap();
+    let Command::Top(args) = cli.command else {
+        panic!("expected Top command");
+    };
+    assert!(matches!(args.command, Some(TopCommand::Agents)));
+}
+
+#[test]
+fn parse_top_with_output_yaml() {
+    let cli = Cli::try_parse_from(["kasmctl", "top", "-o", "yaml"]).unwrap();
+    let Command::Top(_) = cli.command else {
+        panic!("expected Top command");
+    };
+    assert!(matches!(cli.output, OutputFormat::Yaml));
+}
+
+#[test]
+fn parse_top_rejects_unknown_subcommand() {
+    let result = Cli::try_parse_from(["kasmctl", "top", "unknown"]);
     assert!(result.is_err());
 }

@@ -14,6 +14,7 @@ use self::verbs::get::GetArgs;
 use self::verbs::pause::PauseArgs;
 use self::verbs::resume::ResumeArgs;
 use self::verbs::stop::StopArgs;
+use self::verbs::top::TopArgs;
 use self::verbs::update::UpdateArgs;
 
 #[derive(Parser)]
@@ -62,4 +63,8 @@ pub enum Command {
         /// Shell to generate completions for
         shell: Shell,
     },
+    /// Check connectivity and authentication to the Kasm server
+    Health,
+    /// Show deployment summary and resource utilization
+    Top(TopArgs),
 }

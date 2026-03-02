@@ -1,5 +1,6 @@
 use kasmctl::models::agent::Agent;
 use kasmctl::models::image::Image;
+use kasmctl::models::report::{AgentResourceReport, ScalarReportData, format_bytes_human};
 use kasmctl::models::server::Server;
 use kasmctl::models::session::{CreateSessionResponse, Session, SessionImage};
 use kasmctl::models::zone::Zone;
@@ -1293,4 +1294,118 @@ fn deserialize_missing_required_server_id_fails() {
     let json = r#"{"hostname": "10.0.0.1"}"#;
     let result = serde_json::from_str::<Server>(json);
     assert!(result.is_err());
+}
+
+// ===================== AgentResourceReport =====================
+
+fn arb_option_u64() -> impl Strategy<Value = Option<u64>> {
+    prop_oneof![Just(None), any::<u64>().prop_map(Some)]
+}
+
+fn arb_agent_resource_report() -> impl Strategy<Value = AgentResourceReport> {
+    (
+        (
+            "[a-zA-Z0-9-]{1,36}",
+            arb_option_string(),
+            arb_option_string(),
+            arb_option_u64(),
+            arb_option_u64(),
+        ),
+        (
+            arb_option_u64(),
+            arb_option_u64(),
+            arb_option_u64(),
+            arb_option_u64(),
+            arb_option_u64(),
+        ),
+    )
+        .prop_map(
+            |(
+                (name, server_id, health, kasms, disk_space),
+                (disk_space_used, disk_space_free, memory_total, memory_used, memory_free),
+            )| {
+                AgentResourceReport {
+                    name,
+                    server_id,
+                    health,
+                    kasms,
+                    disk_space,
+                    disk_space_used,
+                    disk_space_free,
+                    memory_total,
+                    memory_used,
+                    memory_free,
+                }
+            },
+        )
+}
+
+fn arb_scalar_report_data() -> impl Strategy<Value = ScalarReportData> {
+    prop_oneof![
+        Just(ScalarReportData { data: None }),
+        any::<u64>().prop_map(|n| ScalarReportData {
+            data: Some(serde_json::Value::Number(n.into())),
+        }),
+    ]
+}
+
+proptest! {
+    #[test]
+    fn agent_resource_report_serde_roundtrip(report in arb_agent_resource_report()) {
+        let json = serde_json::to_string(&report).unwrap();
+        let deserialized: AgentResourceReport = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(report, deserialized);
+    }
+
+    #[test]
+    fn agent_resource_report_table_row_length_matches_headers(report in arb_agent_resource_report()) {
+        let headers = AgentResourceReport::table_headers();
+        let row = report.table_row();
+        prop_assert_eq!(row.len(), headers.len());
+    }
+
+    #[test]
+    fn scalar_report_data_serde_roundtrip(report in arb_scalar_report_data()) {
+        let json = serde_json::to_string(&report).unwrap();
+        let deserialized: ScalarReportData = serde_json::from_str(&json).unwrap();
+        prop_assert_eq!(report, deserialized);
+    }
+}
+
+#[test]
+fn scalar_report_data_as_u64_present() {
+    let report = ScalarReportData {
+        data: Some(serde_json::json!(42u64)),
+    };
+    assert_eq!(report.as_u64(), Some(42));
+}
+
+#[test]
+fn scalar_report_data_as_u64_none() {
+    let report = ScalarReportData { data: None };
+    assert_eq!(report.as_u64(), None);
+}
+
+#[test]
+fn scalar_report_data_deserialize() {
+    let report: ScalarReportData = serde_json::from_str(r#"{"data": 5}"#).unwrap();
+    assert_eq!(report.as_u64(), Some(5));
+}
+
+#[test]
+fn format_bytes_human_gb() {
+    // 2 * 1_073_741_824 = 2GB
+    assert_eq!(format_bytes_human(2_147_483_648), "2.0GB");
+}
+
+#[test]
+fn format_bytes_human_mb() {
+    // 5 * 1_048_576 = 5MB
+    assert_eq!(format_bytes_human(5_242_880), "5.0MB");
+}
+
+#[test]
+fn format_bytes_human_kb() {
+    // 2 * 1024 = 2KB
+    assert_eq!(format_bytes_human(2048), "2.0KB");
 }

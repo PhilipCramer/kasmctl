@@ -11,6 +11,8 @@ A command-line tool for managing [Kasm Workspaces](https://kasm.com), inspired b
 - **Server management** — get, create, update, and delete servers
 - **Multi-context configuration** — manage multiple Kasm servers with kubeconfig-style contexts
 - **Flexible output** — table, JSON, and YAML output formats
+- **Health check** — verify connectivity and authentication with `kasmctl health`
+- **Deployment overview** — monitor sessions, users, errors, and agent resources with `kasmctl top`
 - **Shell completions** — generate completions for bash, zsh, fish, and more
 
 ## Installation
@@ -134,6 +136,21 @@ kasmctl stop sessions --status running
 kasmctl pause sessions --idle-for 2h --yes
 kasmctl resume sessions --user <USER_ID>
 kasmctl get sessions --image <IMAGE_ID> --created-after "2024-01-01 00:00:00"
+```
+
+### Check server health
+
+```sh
+kasmctl health
+kasmctl health -o json
+```
+
+### Deployment overview
+
+```sh
+kasmctl top              # summary + agent table
+kasmctl top agents       # agent resource table only
+kasmctl top -o yaml
 ```
 
 ### Shell completions
