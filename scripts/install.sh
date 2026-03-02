@@ -2,7 +2,7 @@
 # kasmctl installer
 #
 # Usage:
-#   curl -sSL https://raw.githubusercontent.com/PhilipCramer/kasmctl/main/packaging/install.sh | sh
+#   curl -sSL https://raw.githubusercontent.com/PhilipCramer/kasmctl/main/scripts/install.sh | sh
 #
 # Options (environment variables):
 #   KASMCTL_VERSION   Version to install (default: latest)
