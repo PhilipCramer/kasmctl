@@ -567,7 +567,7 @@ fn handle_health(
     format: &OutputFormat,
 ) -> Result<()> {
     let start = Instant::now();
-    match client.get_report("current_kasms", None, None) {
+    match client.get_report("current_kasms", Some(1), None) {
         Ok(report) => {
             let elapsed = start.elapsed().as_millis() as u64;
             let health = HealthStatus {
@@ -636,12 +636,12 @@ fn handle_top(
         }
         None => {
             let sessions = client
-                .get_report("current_kasms", None, None)
+                .get_report("current_kasms", Some(1), None)
                 .context("failed to get session count")?
                 .as_u64()
                 .unwrap_or(0);
             let users = client
-                .get_report("current_users", None, None)
+                .get_report("current_users", Some(1), None)
                 .context("failed to get user count")?
                 .as_u64()
                 .unwrap_or(0);
