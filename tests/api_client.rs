@@ -1423,3 +1423,90 @@ fn get_agent_report_api_error() {
     let err = result.unwrap_err().to_string();
     assert!(err.contains("permission denied"), "error was: {err}");
 }
+
+// --- resolve_user_id ---
+
+#[test]
+fn resolve_user_id_success() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/public/get_kasms")
+        .with_status(200)
+        .with_body(
+            r#"{"kasms":[
+                {"kasm_id":"abc-123","user_id":"user-1","operational_status":"running"},
+                {"kasm_id":"def-456","user_id":"user-2","operational_status":"stopped"}
+            ]}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let user_id = client.resolve_user_id("abc-123").unwrap();
+
+    assert_eq!(user_id, "user-1");
+    mock.assert();
+}
+
+#[test]
+fn resolve_user_id_not_found() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/public/get_kasms")
+        .with_status(200)
+        .with_body(r#"{"kasms":[]}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_user_id("abc-123");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(err.contains("not found"), "error was: {err}");
+}
+
+// --- exec_command_kasm ---
+
+#[test]
+fn exec_command_kasm_success() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/public/exec_command_kasm")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"kasm_id":"abc-123","user_id":"user-1","exec_config":{"cmd":"ls -la"}}"#.into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    client
+        .exec_command_kasm("abc-123", "user-1", "ls -la", None, false, None)
+        .unwrap();
+
+    mock.assert();
+}
+
+#[test]
+fn exec_command_kasm_with_workdir() {
+    let mut server = mockito::Server::new();
+    let mock = server
+        .mock("POST", "/api/public/exec_command_kasm")
+        .match_body(mockito::Matcher::PartialJsonString(
+            r#"{"kasm_id":"abc-123","user_id":"user-1","exec_config":{"cmd":"ls","workdir":"/tmp"}}"#
+                .into(),
+        ))
+        .with_status(200)
+        .with_body(r#"{}"#)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    client
+        .exec_command_kasm("abc-123", "user-1", "ls", Some("/tmp"), false, None)
+        .unwrap();
+
+    mock.assert();
+}

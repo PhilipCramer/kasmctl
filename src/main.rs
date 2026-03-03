@@ -13,6 +13,7 @@ use kasmctl::api::servers::UpdateServerRequest;
 use kasmctl::cli::config_cmd::ConfigCommand;
 use kasmctl::cli::verbs::create::CreateResource;
 use kasmctl::cli::verbs::delete::DeleteResource;
+use kasmctl::cli::verbs::exec::ExecResource;
 use kasmctl::cli::verbs::get::GetResource;
 use kasmctl::cli::verbs::pause::PauseResource;
 use kasmctl::cli::verbs::resume::ResumeResource;
@@ -64,6 +65,7 @@ fn main() -> Result<()> {
                 Command::Pause(args) => handle_pause(&client, args.resource),
                 Command::Resume(args) => handle_resume(&client, args.resource),
                 Command::Update(args) => handle_update(&client, args.resource, &cli.output),
+                Command::Exec(args) => handle_exec(&client, args.resource),
                 Command::Health => handle_health(&client, &ctx, &context_name, &cli.output),
                 Command::Top(args) => handle_top(&client, args.command, &cli.output),
                 Command::Config(_) | Command::Completion { .. } => unreachable!(),
@@ -74,9 +76,12 @@ fn main() -> Result<()> {
 
 fn handle_get(client: &KasmClient, resource: GetResource, format: &OutputFormat) -> Result<()> {
     match resource {
-        GetResource::Session { id, user } => {
+        GetResource::Session { id } => {
+            let user_id = client
+                .resolve_user_id(&id)
+                .context("failed to resolve user for session")?;
             let session = client
-                .get_kasm_status(&id, &user)
+                .get_kasm_status(&id, &user_id)
                 .context("failed to get session")?;
             println!("{}", output::render_one(&session, format)?);
         }
@@ -554,6 +559,108 @@ fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<()> {
             );
             if failed > 0 {
                 anyhow::bail!("{failed} session(s) failed to resume");
+            }
+        }
+    }
+    Ok(())
+}
+
+fn handle_exec(client: &KasmClient, resource: ExecResource) -> Result<()> {
+    match resource {
+        ExecResource::Session {
+            id,
+            workdir,
+            privileged,
+            exec_user,
+            cmd,
+        } => {
+            let user_id = client
+                .resolve_user_id(&id)
+                .context("failed to resolve user for session")?;
+            let cmd_str = cmd.join(" ");
+            client
+                .exec_command_kasm(
+                    &id,
+                    &user_id,
+                    &cmd_str,
+                    workdir.as_deref(),
+                    privileged,
+                    exec_user.as_deref(),
+                )
+                .context("failed to execute command")?;
+            println!("Command submitted to session {id}.");
+        }
+        ExecResource::Sessions {
+            filters,
+            yes,
+            workdir,
+            privileged,
+            exec_user,
+            cmd,
+        } => {
+            filters.validate().map_err(|e| anyhow::anyhow!(e))?;
+            let mut sessions = client.get_kasms().context("failed to list sessions")?;
+            filters
+                .apply(&mut sessions)
+                .map_err(|e| anyhow::anyhow!(e))?;
+
+            if sessions.is_empty() {
+                eprintln!("No sessions match the given filters.");
+                return Ok(());
+            }
+
+            let msg = if filters.is_empty() {
+                format!("Execute command on ALL {} sessions?", sessions.len())
+            } else {
+                format!("Execute command on {} matching sessions?", sessions.len())
+            };
+            if !confirm::confirm(&msg, yes) {
+                eprintln!("Aborted.");
+                return Ok(());
+            }
+
+            let cmd_str = cmd.join(" ");
+            let total = sessions.len();
+            let mut failed = 0usize;
+            let mut skipped = 0usize;
+            for s in &sessions {
+                let user_id = match &s.user_id {
+                    Some(uid) => uid,
+                    None => {
+                        eprintln!("  {} skipped (no user_id)", s.kasm_id);
+                        skipped += 1;
+                        continue;
+                    }
+                };
+                match client.exec_command_kasm(
+                    &s.kasm_id,
+                    user_id,
+                    &cmd_str,
+                    workdir.as_deref(),
+                    privileged,
+                    exec_user.as_deref(),
+                ) {
+                    Ok(()) => eprintln!("  {} ok", s.kasm_id),
+                    Err(e) => {
+                        eprintln!("  {} FAILED: {e}", s.kasm_id);
+                        failed += 1;
+                    }
+                }
+            }
+
+            let attempted = total - skipped;
+            eprintln!(
+                "Executed on {}/{} sessions.{}",
+                attempted - failed,
+                attempted,
+                if skipped > 0 {
+                    format!(" ({skipped} skipped)")
+                } else {
+                    String::new()
+                }
+            );
+            if failed > 0 {
+                anyhow::bail!("{failed} session(s) failed to execute");
             }
         }
     }

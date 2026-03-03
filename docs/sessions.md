@@ -12,7 +12,7 @@ kasmctl get sessions --status running
 ## Get a Specific Session
 
 ```sh
-kasmctl get session <SESSION_ID> --user <USER_ID>
+kasmctl get session <SESSION_ID>
 ```
 
 ## Create a Session
@@ -34,6 +34,31 @@ kasmctl stop session <SESSION_ID>
 kasmctl pause session <SESSION_ID>
 kasmctl resume session <SESSION_ID>
 ```
+
+## Execute Commands
+
+Run a command inside a session:
+
+```sh
+kasmctl exec session <SESSION_ID> -- <CMD>...
+kasmctl exec session <SESSION_ID> --workdir /tmp -- ls -la
+kasmctl exec session <SESSION_ID> --privileged --exec-user root -- whoami
+```
+
+Execute a command across multiple sessions:
+
+```sh
+kasmctl exec sessions --status running -- echo "maintenance in 10 minutes"
+kasmctl exec sessions --image <IMAGE_ID> --yes -- apt-get update
+```
+
+### Exec Options
+
+| Option | Description |
+|---|---|
+| `--workdir <PATH>` | Working directory for the command |
+| `--privileged` | Run as privileged |
+| `--exec-user <USER>` | User to run the command as inside the container |
 
 ## Bulk Operations
 

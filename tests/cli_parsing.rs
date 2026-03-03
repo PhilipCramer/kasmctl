@@ -3,6 +3,7 @@ use clap_complete::Shell;
 use kasmctl::cli::config_cmd::ConfigCommand;
 use kasmctl::cli::verbs::create::CreateResource;
 use kasmctl::cli::verbs::delete::DeleteResource;
+use kasmctl::cli::verbs::exec::ExecResource;
 use kasmctl::cli::verbs::get::GetResource;
 use kasmctl::cli::verbs::pause::PauseResource;
 use kasmctl::cli::verbs::resume::ResumeResource;
@@ -72,30 +73,26 @@ fn parse_get_sessions_status_value_is_captured() {
 
 #[test]
 fn parse_get_session_singular_alias() {
-    let cli =
-        Cli::try_parse_from(["kasmctl", "get", "session", "abc-123", "--user", "user-1"]).unwrap();
+    let cli = Cli::try_parse_from(["kasmctl", "get", "session", "abc-123"]).unwrap();
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Session { id, user } = args.resource else {
+    let GetResource::Session { id } = args.resource else {
         panic!("expected Session resource");
     };
     assert_eq!(id, "abc-123");
-    assert_eq!(user, "user-1");
 }
 
 #[test]
 fn parse_get_kasm_alias() {
-    let cli =
-        Cli::try_parse_from(["kasmctl", "get", "kasm", "abc-123", "--user", "user-1"]).unwrap();
+    let cli = Cli::try_parse_from(["kasmctl", "get", "kasm", "abc-123"]).unwrap();
     let Command::Get(args) = cli.command else {
         panic!("expected Get command");
     };
-    let GetResource::Session { id, user } = args.resource else {
+    let GetResource::Session { id } = args.resource else {
         panic!("expected Session resource");
     };
     assert_eq!(id, "abc-123");
-    assert_eq!(user, "user-1");
 }
 
 #[test]
@@ -2056,4 +2053,101 @@ fn parse_top_with_output_yaml() {
 fn parse_top_rejects_unknown_subcommand() {
     let result = Cli::try_parse_from(["kasmctl", "top", "unknown"]);
     assert!(result.is_err());
+}
+
+// --- Exec commands ---
+
+#[test]
+fn parse_exec_session() {
+    let cli =
+        Cli::try_parse_from(["kasmctl", "exec", "session", "abc-123", "--", "ls", "-la"]).unwrap();
+    let Command::Exec(args) = cli.command else {
+        panic!("expected Exec command");
+    };
+    let ExecResource::Session { id, cmd, .. } = args.resource else {
+        panic!("expected Session resource");
+    };
+    assert_eq!(id, "abc-123");
+    assert_eq!(cmd, vec!["ls", "-la"]);
+}
+
+#[test]
+fn parse_exec_session_with_options() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "exec",
+        "session",
+        "abc-123",
+        "--workdir",
+        "/tmp",
+        "--privileged",
+        "--exec-user",
+        "root",
+        "--",
+        "whoami",
+    ])
+    .unwrap();
+    let Command::Exec(args) = cli.command else {
+        panic!("expected Exec command");
+    };
+    let ExecResource::Session {
+        id,
+        workdir,
+        privileged,
+        exec_user,
+        cmd,
+    } = args.resource
+    else {
+        panic!("expected Session resource");
+    };
+    assert_eq!(id, "abc-123");
+    assert_eq!(workdir.as_deref(), Some("/tmp"));
+    assert!(privileged);
+    assert_eq!(exec_user.as_deref(), Some("root"));
+    assert_eq!(cmd, vec!["whoami"]);
+}
+
+#[test]
+fn parse_exec_sessions() {
+    let cli = Cli::try_parse_from([
+        "kasmctl", "exec", "sessions", "--status", "running", "--yes", "--", "echo", "hello",
+    ])
+    .unwrap();
+    let Command::Exec(args) = cli.command else {
+        panic!("expected Exec command");
+    };
+    let ExecResource::Sessions {
+        filters, yes, cmd, ..
+    } = args.resource
+    else {
+        panic!("expected Sessions resource");
+    };
+    assert_eq!(filters.status.as_deref(), Some("running"));
+    assert!(yes);
+    assert_eq!(cmd, vec!["echo", "hello"]);
+}
+
+#[test]
+fn parse_exec_session_requires_cmd() {
+    let result = Cli::try_parse_from(["kasmctl", "exec", "session", "abc-123"]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn parse_exec_session_kasm_alias() {
+    let cli = Cli::try_parse_from(["kasmctl", "exec", "kasm", "abc-123", "--", "ls"]).unwrap();
+    let Command::Exec(args) = cli.command else {
+        panic!("expected Exec command");
+    };
+    assert!(matches!(args.resource, ExecResource::Session { .. }));
+}
+
+#[test]
+fn parse_exec_sessions_kasms_alias() {
+    let cli =
+        Cli::try_parse_from(["kasmctl", "exec", "kasms", "--yes", "--", "echo", "test"]).unwrap();
+    let Command::Exec(args) = cli.command else {
+        panic!("expected Exec command");
+    };
+    assert!(matches!(args.resource, ExecResource::Sessions { .. }));
 }

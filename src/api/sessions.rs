@@ -101,4 +101,61 @@ impl KasmClient {
         let _: Resp = self.post("resume_kasm", &Req { kasm_id })?;
         Ok(())
     }
+
+    /// Look up the user_id for a session by scanning all active sessions.
+    pub fn resolve_user_id(&self, kasm_id: &str) -> Result<String> {
+        let sessions = self.get_kasms()?;
+        let session = sessions
+            .iter()
+            .find(|s| s.kasm_id == kasm_id)
+            .ok_or_else(|| anyhow::anyhow!("session {kasm_id:?} not found"))?;
+        session
+            .user_id
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("session {kasm_id:?} has no user_id"))
+    }
+
+    /// Execute a command inside a running session.
+    pub fn exec_command_kasm(
+        &self,
+        kasm_id: &str,
+        user_id: &str,
+        cmd: &str,
+        workdir: Option<&str>,
+        privileged: bool,
+        exec_user: Option<&str>,
+    ) -> Result<()> {
+        #[derive(Serialize)]
+        struct ExecConfig<'a> {
+            cmd: &'a str,
+            environment: std::collections::HashMap<String, String>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            workdir: Option<&'a str>,
+        }
+
+        #[derive(Serialize)]
+        struct Req<'a> {
+            kasm_id: &'a str,
+            user_id: &'a str,
+            exec_config: ExecConfig<'a>,
+            privileged: bool,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            exec_user: Option<&'a str>,
+        }
+
+        let req = Req {
+            kasm_id,
+            user_id,
+            exec_config: ExecConfig {
+                cmd,
+                environment: std::collections::HashMap::new(),
+                workdir,
+            },
+            privileged,
+            exec_user,
+        };
+
+        let _: serde_json::Value = self.post("public/exec_command_kasm", &req)?;
+        Ok(())
+    }
 }

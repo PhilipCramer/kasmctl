@@ -10,6 +10,7 @@ use crate::output::OutputFormat;
 use self::config_cmd::ConfigArgs;
 use self::verbs::create::CreateArgs;
 use self::verbs::delete::DeleteArgs;
+use self::verbs::exec::ExecArgs;
 use self::verbs::get::GetArgs;
 use self::verbs::pause::PauseArgs;
 use self::verbs::resume::ResumeArgs;
@@ -56,6 +57,8 @@ pub enum Command {
     Resume(ResumeArgs),
     /// Update a resource
     Update(UpdateArgs),
+    /// Execute a command inside a session
+    Exec(ExecArgs),
     /// Manage configuration contexts
     Config(ConfigArgs),
     /// Generate shell completion scripts
