@@ -635,16 +635,17 @@ fn handle_top(
             println!("{}", output::render_list(&agents, format)?);
         }
         None => {
-            let sessions = client
-                .get_report("current_kasms", Some(1), None)
-                .context("failed to get session count")?
-                .as_u64()
-                .unwrap_or(0);
-            let users = client
-                .get_report("current_users", Some(1), None)
-                .context("failed to get user count")?
-                .as_u64()
-                .unwrap_or(0);
+            let kasms = client.get_kasms().context("failed to list sessions")?;
+            let sessions = kasms.len() as u64;
+            let users = {
+                let mut ids: Vec<&str> = kasms
+                    .iter()
+                    .filter_map(|k| k.user_id.as_deref())
+                    .collect();
+                ids.sort_unstable();
+                ids.dedup();
+                ids.len() as u64
+            };
             let errors = client
                 .get_report("get_errors", Some(86400), None)
                 .context("failed to get error count")?
