@@ -1,5 +1,6 @@
 pub mod create;
 pub mod delete;
+pub mod exec;
 pub mod get;
 pub mod pause;
 pub mod resume;

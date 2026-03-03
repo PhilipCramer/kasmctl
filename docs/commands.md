@@ -19,7 +19,7 @@ kasmctl [OPTIONS] <COMMAND>
 
 | Command | Description |
 |---|---|
-| `get session <ID> --user <USER>` | Get details for a specific session |
+| `get session <ID>` | Get details for a specific session |
 | `get sessions [FILTERS]` | List all sessions, optionally filtered |
 | `get image <ID>` | Get details for a specific image |
 | `get images [FILTERS]` | List all available workspace images, optionally filtered |
@@ -44,6 +44,8 @@ kasmctl [OPTIONS] <COMMAND>
 | `pause sessions [FILTERS] [-y]` | Pause multiple sessions matching filters |
 | `resume session <ID>` | Resume a stopped or paused session |
 | `resume sessions [FILTERS] [-y]` | Resume multiple sessions matching filters |
+| `exec session <ID> [OPTIONS] -- <CMD>...` | Execute a command inside a session |
+| `exec sessions [FILTERS] [OPTIONS] [-y] -- <CMD>...` | Execute a command across multiple sessions |
 | `config set-context <NAME>` | Add or update a context |
 | `config use-context <NAME>` | Switch the active context |
 | `config get-contexts` | List all configured contexts |
@@ -57,11 +59,12 @@ kasmctl [OPTIONS] <COMMAND>
 Session resources accept `kasm` (singular) and `kasms` (plural) as aliases:
 
 ```sh
-kasmctl get kasm <ID> --user <USER>  # same as: get session <ID> --user <USER>
+kasmctl get kasm <ID>         # same as: get session <ID>
 kasmctl get kasms             # same as: get sessions
 kasmctl stop kasm <ID>        # same as: stop session <ID>
 kasmctl stop kasms --status running  # same as: stop sessions --status running
 kasmctl delete kasm <ID>      # same as: delete session <ID>
+kasmctl exec kasm <ID> -- <CMD>...   # same as: exec session <ID> -- <CMD>...
 ```
 
 Agent resources accept `docker-agent` (singular) and `docker-agents` (plural) as aliases:

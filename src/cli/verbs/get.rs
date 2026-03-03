@@ -15,9 +15,6 @@ pub enum GetResource {
     Session {
         /// Session ID
         id: String,
-        /// User ID that owns the session
-        #[arg(long)]
-        user: String,
     },
     /// List all sessions
     #[command(alias = "kasms")]
