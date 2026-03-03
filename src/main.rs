@@ -638,10 +638,8 @@ fn handle_top(
             let kasms = client.get_kasms().context("failed to list sessions")?;
             let sessions = kasms.len() as u64;
             let users = {
-                let mut ids: Vec<&str> = kasms
-                    .iter()
-                    .filter_map(|k| k.user_id.as_deref())
-                    .collect();
+                let mut ids: Vec<&str> =
+                    kasms.iter().filter_map(|k| k.user_id.as_deref()).collect();
                 ids.sort_unstable();
                 ids.dedup();
                 ids.len() as u64
