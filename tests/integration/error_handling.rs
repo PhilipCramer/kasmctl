@@ -1,7 +1,7 @@
 use kasmctl::api::KasmClient;
 use kasmctl::config::model::Context;
 
-use super::helpers::{NONEXISTENT_UUID, require_integration_env};
+use super::helpers::{NONEXISTENT_UUID, TEST_USER_ID, require_integration_env};
 
 /// Requests with invalid API credentials should fail with an error.
 #[test]
@@ -52,7 +52,7 @@ fn stop_nonexistent_session_returns_error() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let result = client.stop_kasm(NONEXISTENT_UUID);
+    let result = client.stop_kasm(NONEXISTENT_UUID, TEST_USER_ID);
 
     assert!(
         result.is_err(),
@@ -66,7 +66,7 @@ fn pause_nonexistent_session_returns_error() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let result = client.pause_kasm(NONEXISTENT_UUID);
+    let result = client.pause_kasm(NONEXISTENT_UUID, TEST_USER_ID);
 
     assert!(
         result.is_err(),
@@ -80,7 +80,7 @@ fn resume_nonexistent_session_returns_error() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let result = client.resume_kasm(NONEXISTENT_UUID);
+    let result = client.resume_kasm(NONEXISTENT_UUID, TEST_USER_ID);
 
     assert!(
         result.is_err(),

@@ -1,16 +1,11 @@
 use kasmctl::api::KasmClient;
 
 use super::helpers::{
-    NONEXISTENT_UUID, discover_image_id, require_integration_env, try_create_session,
+    NONEXISTENT_UUID, TEST_USER_ID, discover_image_id, require_integration_env, try_create_session,
     wait_for_status,
 };
 
 /// Lifecycle: create → wait running → verify status → destroy.
-///
-/// NOTE: stop/pause/resume are excluded because the API client does not yet
-/// send `user_id` in those requests, which the Kasm internal API requires.
-/// Once the API client is fixed, expand this test to cover the full
-/// create→stop→resume→pause→resume→destroy cycle.
 #[test]
 fn session_full_lifecycle() {
     let ctx = require_integration_env!();
@@ -39,7 +34,7 @@ fn session_full_lifecycle() {
     })();
 
     // Always destroy the session, even if assertions failed.
-    let _ = client.destroy_kasm(&kasm_id);
+    let _ = client.destroy_kasm(&kasm_id, TEST_USER_ID);
 
     result.unwrap();
 }
@@ -64,7 +59,7 @@ fn create_session_returns_valid_response() {
     );
 
     // Always clean up.
-    let _ = client.destroy_kasm(&kasm_id);
+    let _ = client.destroy_kasm(&kasm_id, TEST_USER_ID);
 }
 
 /// Destroying a nonexistent session should return an error.
@@ -75,7 +70,7 @@ fn destroy_nonexistent_session_returns_error() {
     let ctx = require_integration_env!();
     let client = KasmClient::new(&ctx).unwrap();
 
-    let result = client.destroy_kasm(NONEXISTENT_UUID);
+    let result = client.destroy_kasm(NONEXISTENT_UUID, TEST_USER_ID);
 
     assert!(
         result.is_err(),
