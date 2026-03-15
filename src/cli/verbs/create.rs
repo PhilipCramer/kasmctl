@@ -38,9 +38,9 @@ pub enum CreateResource {
         #[arg(long)]
         cores: Option<f64>,
 
-        /// Memory in bytes to allocate
+        /// Memory to allocate (e.g. 3GB, 512MB, or raw bytes)
         #[arg(long)]
-        memory: Option<i64>,
+        memory: Option<String>,
 
         /// Whether the image is enabled
         #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]

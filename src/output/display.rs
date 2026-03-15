@@ -1,5 +1,25 @@
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+/// Format a byte count as a human-friendly string.
+///
+/// Whole gigabyte multiples render as `XGB`, whole megabyte multiples as `XMB`,
+/// and anything else renders as the raw byte count. Negative values are returned
+/// as their numeric string representation unchanged.
+pub fn format_bytes(bytes: i64) -> String {
+    if bytes < 0 {
+        return bytes.to_string();
+    }
+    const GB: i64 = 1_073_741_824;
+    const MB: i64 = 1_048_576;
+    if bytes >= GB && bytes % GB == 0 {
+        format!("{}GB", bytes / GB)
+    } else if bytes >= MB && bytes % MB == 0 {
+        format!("{}MB", bytes / MB)
+    } else {
+        bytes.to_string()
+    }
+}
+
 /// Returns the first 8 characters of a UUID-like string (like Docker/git short IDs).
 /// If the input is shorter than 8 characters, returns the whole string.
 pub fn short_id(id: &str) -> &str {
