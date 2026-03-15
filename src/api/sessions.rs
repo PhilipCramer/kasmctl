@@ -50,55 +50,59 @@ impl KasmClient {
         self.post("public/request_kasm", &Req { image_id, user_id })
     }
 
-    pub fn destroy_kasm(&self, kasm_id: &str) -> Result<()> {
+    pub fn destroy_kasm(&self, kasm_id: &str, user_id: &str) -> Result<()> {
         #[derive(Serialize)]
         struct Req<'a> {
             kasm_id: &'a str,
+            user_id: &'a str,
         }
 
         #[derive(Deserialize)]
         struct Resp {}
 
-        let _: Resp = self.post("public/destroy_kasm", &Req { kasm_id })?;
+        let _: Resp = self.post("public/destroy_kasm", &Req { kasm_id, user_id })?;
         Ok(())
     }
 
-    pub fn stop_kasm(&self, kasm_id: &str) -> Result<()> {
+    pub fn stop_kasm(&self, kasm_id: &str, user_id: &str) -> Result<()> {
         #[derive(Serialize)]
         struct Req<'a> {
             kasm_id: &'a str,
+            user_id: &'a str,
         }
 
         #[derive(Deserialize)]
         struct Resp {}
 
-        let _: Resp = self.post("stop_kasm", &Req { kasm_id })?;
+        let _: Resp = self.post("stop_kasm", &Req { kasm_id, user_id })?;
         Ok(())
     }
 
-    pub fn pause_kasm(&self, kasm_id: &str) -> Result<()> {
+    pub fn pause_kasm(&self, kasm_id: &str, user_id: &str) -> Result<()> {
         #[derive(Serialize)]
         struct Req<'a> {
             kasm_id: &'a str,
+            user_id: &'a str,
         }
 
         #[derive(Deserialize)]
         struct Resp {}
 
-        let _: Resp = self.post("pause_kasm", &Req { kasm_id })?;
+        let _: Resp = self.post("pause_kasm", &Req { kasm_id, user_id })?;
         Ok(())
     }
 
-    pub fn resume_kasm(&self, kasm_id: &str) -> Result<()> {
+    pub fn resume_kasm(&self, kasm_id: &str, user_id: &str) -> Result<()> {
         #[derive(Serialize)]
         struct Req<'a> {
             kasm_id: &'a str,
+            user_id: &'a str,
         }
 
         #[derive(Deserialize)]
         struct Resp {}
 
-        let _: Resp = self.post("resume_kasm", &Req { kasm_id })?;
+        let _: Resp = self.post("resume_kasm", &Req { kasm_id, user_id })?;
         Ok(())
     }
 

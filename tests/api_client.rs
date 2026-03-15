@@ -209,7 +209,7 @@ fn destroy_kasm_success() {
     let mock = server
         .mock("POST", "/api/public/destroy_kasm")
         .match_body(mockito::Matcher::PartialJsonString(
-            r#"{"kasm_id":"abc-123"}"#.into(),
+            r#"{"kasm_id":"abc-123","user_id":"user-001"}"#.into(),
         ))
         .with_status(200)
         .with_body(r#"{}"#)
@@ -217,7 +217,7 @@ fn destroy_kasm_success() {
 
     let ctx = test_context(&server.url());
     let client = KasmClient::new(&ctx).unwrap();
-    client.destroy_kasm("abc-123").unwrap();
+    client.destroy_kasm("abc-123", "user-001").unwrap();
 
     mock.assert();
 }
@@ -1067,7 +1067,7 @@ fn stop_kasm_success() {
     let mock = server
         .mock("POST", "/api/stop_kasm")
         .match_body(mockito::Matcher::PartialJsonString(
-            r#"{"kasm_id":"abc-123"}"#.into(),
+            r#"{"kasm_id":"abc-123","user_id":"user-001"}"#.into(),
         ))
         .with_status(200)
         .with_body(r#"{}"#)
@@ -1075,7 +1075,7 @@ fn stop_kasm_success() {
 
     let ctx = test_context(&server.url());
     let client = KasmClient::new(&ctx).unwrap();
-    client.stop_kasm("abc-123").unwrap();
+    client.stop_kasm("abc-123", "user-001").unwrap();
 
     mock.assert();
 }
@@ -1088,7 +1088,7 @@ fn pause_kasm_success() {
     let mock = server
         .mock("POST", "/api/pause_kasm")
         .match_body(mockito::Matcher::PartialJsonString(
-            r#"{"kasm_id":"abc-123"}"#.into(),
+            r#"{"kasm_id":"abc-123","user_id":"user-001"}"#.into(),
         ))
         .with_status(200)
         .with_body(r#"{}"#)
@@ -1096,7 +1096,7 @@ fn pause_kasm_success() {
 
     let ctx = test_context(&server.url());
     let client = KasmClient::new(&ctx).unwrap();
-    client.pause_kasm("abc-123").unwrap();
+    client.pause_kasm("abc-123", "user-001").unwrap();
 
     mock.assert();
 }
@@ -1109,7 +1109,7 @@ fn resume_kasm_success() {
     let mock = server
         .mock("POST", "/api/resume_kasm")
         .match_body(mockito::Matcher::PartialJsonString(
-            r#"{"kasm_id":"abc-123"}"#.into(),
+            r#"{"kasm_id":"abc-123","user_id":"user-001"}"#.into(),
         ))
         .with_status(200)
         .with_body(r#"{}"#)
@@ -1117,7 +1117,7 @@ fn resume_kasm_success() {
 
     let ctx = test_context(&server.url());
     let client = KasmClient::new(&ctx).unwrap();
-    client.resume_kasm("abc-123").unwrap();
+    client.resume_kasm("abc-123", "user-001").unwrap();
 
     mock.assert();
 }

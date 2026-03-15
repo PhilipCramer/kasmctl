@@ -254,8 +254,11 @@ fn handle_create(
 fn handle_delete(client: &KasmClient, resource: DeleteResource) -> Result<()> {
     match resource {
         DeleteResource::Session { id } => {
+            let user_id = client
+                .resolve_user_id(&id)
+                .context("failed to resolve user for session")?;
             client
-                .destroy_kasm(&id)
+                .destroy_kasm(&id, &user_id)
                 .context("failed to delete session")?;
             println!("Session {id} deleted.");
         }
@@ -396,7 +399,12 @@ fn handle_update(
 fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> {
     match resource {
         StopResource::Session { id } => {
-            client.stop_kasm(&id).context("failed to stop session")?;
+            let user_id = client
+                .resolve_user_id(&id)
+                .context("failed to resolve user for session")?;
+            client
+                .stop_kasm(&id, &user_id)
+                .context("failed to stop session")?;
             println!("Session {id} stopped.");
         }
         StopResource::Sessions { filters, yes } => {
@@ -431,7 +439,15 @@ fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> {
                     skipped += 1;
                     continue;
                 }
-                match client.stop_kasm(&s.kasm_id) {
+                let user_id = match s.user_id.as_deref() {
+                    Some(uid) => uid,
+                    None => {
+                        eprintln!("  {} skipped (no user_id)", s.kasm_id);
+                        skipped += 1;
+                        continue;
+                    }
+                };
+                match client.stop_kasm(&s.kasm_id, user_id) {
                     Ok(()) => eprintln!("  {} ok", s.kasm_id),
                     Err(e) => {
                         eprintln!("  {} FAILED: {e}", s.kasm_id);
@@ -462,7 +478,12 @@ fn handle_stop(client: &KasmClient, resource: StopResource) -> Result<()> {
 fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()> {
     match resource {
         PauseResource::Session { id } => {
-            client.pause_kasm(&id).context("failed to pause session")?;
+            let user_id = client
+                .resolve_user_id(&id)
+                .context("failed to resolve user for session")?;
+            client
+                .pause_kasm(&id, &user_id)
+                .context("failed to pause session")?;
             println!("Session {id} paused.");
         }
         PauseResource::Sessions { filters, yes } => {
@@ -499,7 +520,15 @@ fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()> {
                     skipped += 1;
                     continue;
                 }
-                match client.pause_kasm(&s.kasm_id) {
+                let user_id = match s.user_id.as_deref() {
+                    Some(uid) => uid,
+                    None => {
+                        eprintln!("  {} skipped (no user_id)", s.kasm_id);
+                        skipped += 1;
+                        continue;
+                    }
+                };
+                match client.pause_kasm(&s.kasm_id, user_id) {
                     Ok(()) => eprintln!("  {} ok", s.kasm_id),
                     Err(e) => {
                         eprintln!("  {} FAILED: {e}", s.kasm_id);
@@ -530,8 +559,11 @@ fn handle_pause(client: &KasmClient, resource: PauseResource) -> Result<()> {
 fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<()> {
     match resource {
         ResumeResource::Session { id } => {
+            let user_id = client
+                .resolve_user_id(&id)
+                .context("failed to resolve user for session")?;
             client
-                .resume_kasm(&id)
+                .resume_kasm(&id, &user_id)
                 .context("failed to resume session")?;
             println!("Session {id} resumed.");
         }
@@ -567,7 +599,15 @@ fn handle_resume(client: &KasmClient, resource: ResumeResource) -> Result<()> {
                     skipped += 1;
                     continue;
                 }
-                match client.resume_kasm(&s.kasm_id) {
+                let user_id = match s.user_id.as_deref() {
+                    Some(uid) => uid,
+                    None => {
+                        eprintln!("  {} skipped (no user_id)", s.kasm_id);
+                        skipped += 1;
+                        continue;
+                    }
+                };
+                match client.resume_kasm(&s.kasm_id, user_id) {
                     Ok(()) => eprintln!("  {} ok", s.kasm_id),
                     Err(e) => {
                         eprintln!("  {} FAILED: {e}", s.kasm_id);
