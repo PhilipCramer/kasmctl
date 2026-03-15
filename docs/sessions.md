@@ -18,8 +18,10 @@ kasmctl get session <SESSION_ID>
 ## Create a Session
 
 ```sh
-kasmctl create session --image <IMAGE_ID>
+kasmctl create session --image <IMAGE>
 ```
+
+`--image` accepts an exact image ID, an ID prefix, or a case-insensitive friendly name (e.g. `"Terminal"`).
 
 ## Delete a Session
 
