@@ -11,7 +11,7 @@ pub enum CreateResource {
     /// Create a new session
     #[command(alias = "kasm")]
     Session {
-        /// Workspace image ID to launch
+        /// Workspace image to launch (exact ID, ID prefix, or case-insensitive friendly name)
         #[arg(long)]
         image: String,
 

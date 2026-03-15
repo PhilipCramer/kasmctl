@@ -8,9 +8,9 @@ pub struct UpdateArgs {
 
 #[derive(Subcommand)]
 pub enum UpdateResource {
-    /// Update an existing workspace image
+    /// Update an existing workspace image by ID, ID prefix, or friendly name
     Image {
-        /// Image ID to update
+        /// Image to update (exact ID, ID prefix, or case-insensitive friendly name)
         id: String,
 
         /// Docker image name (e.g. kasmweb/ubuntu-noble-desktop:1.18.0)

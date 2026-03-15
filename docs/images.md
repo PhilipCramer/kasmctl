@@ -13,8 +13,10 @@ kasmctl get images --name ubuntu
 ## Get a Specific Image
 
 ```sh
-kasmctl get image <IMAGE_ID>
+kasmctl get image <IMAGE>
 ```
+
+`<IMAGE>` accepts an exact image ID, an ID prefix, or a case-insensitive friendly name (e.g. `"Terminal"`).
 
 ## Create an Image
 
@@ -25,14 +27,18 @@ kasmctl create image --name kasmweb/terminal:1.18.0 --friendly-name "Terminal"
 ## Update an Image
 
 ```sh
-kasmctl update image <IMAGE_ID> --friendly-name "New Name" --enabled false
+kasmctl update image <IMAGE> --friendly-name "New Name" --enabled false
 ```
+
+`<IMAGE>` accepts an exact image ID, an ID prefix, or a case-insensitive friendly name.
 
 ## Delete an Image
 
 ```sh
-kasmctl delete image <IMAGE_ID>
+kasmctl delete image <IMAGE>
 ```
+
+`<IMAGE>` accepts an exact image ID, an ID prefix, or a case-insensitive friendly name.
 
 ## Filter Options
 
@@ -57,7 +63,7 @@ Multiple filters can be combined and are applied with AND logic.
 | `--friendly-name <NAME>` | Human-readable display name **(required)** |
 | `--description <TEXT>` | Image description |
 | `--cores <CORES>` | Number of CPU cores to allocate |
-| `--memory <BYTES>` | Memory in bytes to allocate |
+| `--memory <MEMORY>` | Memory to allocate (e.g. `3GB`, `512MB`, or raw bytes) |
 | `--enabled <BOOL>` | Whether the image is enabled (default: `true`) |
 | `--image-src <SRC>` | Image source type (default: `Container`) |
 | `--docker-registry <URL>` | Docker registry URL |
@@ -67,7 +73,7 @@ Multiple filters can be combined and are applied with AND logic.
 
 ## Update Options
 
-`update image <ID>` accepts any combination of the following options. Only specified fields are changed:
+`update image <IMAGE>` accepts any combination of the following options. Only specified fields are changed:
 
 | Option | Description |
 |---|---|
@@ -75,7 +81,7 @@ Multiple filters can be combined and are applied with AND logic.
 | `--friendly-name <NAME>` | Human-readable display name |
 | `--description <TEXT>` | Image description |
 | `--cores <CORES>` | Number of CPU cores |
-| `--memory <BYTES>` | Memory in bytes |
+| `--memory <MEMORY>` | Memory to allocate (e.g. `3GB`, `512MB`, or raw bytes) |
 | `--enabled <BOOL>` | Enable or disable the image |
 | `--image-src <SRC>` | Image thumbnail source path |
 | `--docker-registry <URL>` | Docker registry URL |

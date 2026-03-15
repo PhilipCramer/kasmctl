@@ -22,9 +22,9 @@ pub enum GetResource {
         #[command(flatten)]
         filters: SessionFilters,
     },
-    /// Get a specific image by ID
+    /// Get a specific image by ID, ID prefix, or friendly name
     Image {
-        /// Image ID
+        /// Image to look up (exact ID, ID prefix, or case-insensitive friendly name)
         id: String,
     },
     /// List all available workspace images
