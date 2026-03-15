@@ -11,6 +11,7 @@ use kasmctl::api::agents::UpdateAgentRequest;
 use kasmctl::api::images::UpdateImageRequest;
 use kasmctl::api::servers::UpdateServerRequest;
 use kasmctl::cli::config_cmd::ConfigCommand;
+use kasmctl::cli::filters::parse_memory;
 use kasmctl::cli::verbs::create::CreateResource;
 use kasmctl::cli::verbs::delete::DeleteResource;
 use kasmctl::cli::verbs::exec::ExecResource;
@@ -94,11 +95,9 @@ fn handle_get(client: &KasmClient, resource: GetResource, format: &OutputFormat)
             println!("{}", output::render_list(&sessions, format)?);
         }
         GetResource::Image { id } => {
-            let images = client.get_images().context("failed to list images")?;
-            let image = images
-                .into_iter()
-                .find(|img| img.image_id == id)
-                .ok_or_else(|| anyhow::anyhow!("image {id:?} not found"))?;
+            let image = client
+                .resolve_image(&id)
+                .context("failed to resolve image")?;
             println!("{}", output::render_one(&image, format)?);
         }
         GetResource::Images { filters } => {
@@ -156,8 +155,11 @@ fn handle_create(
 ) -> Result<()> {
     match resource {
         CreateResource::Session { image, user } => {
+            let resolved_image = client
+                .resolve_image(&image)
+                .context("failed to resolve image")?;
             let resp = client
-                .request_kasm(&image, user.as_deref())
+                .request_kasm(&resolved_image.image_id, user.as_deref())
                 .context("failed to create session")?;
 
             match format {
@@ -191,12 +193,17 @@ fn handle_create(
             exec_config,
             image_type,
         } => {
+            let memory_bytes = memory
+                .as_deref()
+                .map(parse_memory)
+                .transpose()
+                .map_err(|e| anyhow::anyhow!(e))?;
             let params = kasmctl::api::images::CreateImageParams {
                 name,
                 friendly_name,
                 description,
                 cores,
-                memory,
+                memory: memory_bytes,
                 enabled,
                 image_src,
                 docker_registry,
@@ -253,8 +260,18 @@ fn handle_delete(client: &KasmClient, resource: DeleteResource) -> Result<()> {
             println!("Session {id} deleted.");
         }
         DeleteResource::Image { id } => {
-            client.delete_image(&id).context("failed to delete image")?;
-            println!("Image {id} deleted.");
+            let image = client
+                .resolve_image(&id)
+                .context("failed to resolve image")?;
+            let display_name = image
+                .friendly_name
+                .as_deref()
+                .unwrap_or(&image.image_id)
+                .to_string();
+            client
+                .delete_image(&image.image_id)
+                .context("failed to delete image")?;
+            println!("Image {display_name:?} deleted.");
         }
         DeleteResource::Server { id } => {
             client
@@ -286,13 +303,21 @@ fn handle_update(
             exec_config,
             hidden,
         } => {
+            let resolved = client
+                .resolve_image(&id)
+                .context("failed to resolve image")?;
+            let memory_bytes = memory
+                .as_deref()
+                .map(parse_memory)
+                .transpose()
+                .map_err(|e| anyhow::anyhow!(e))?;
             let req = UpdateImageRequest {
-                image_id: id,
+                image_id: resolved.image_id,
                 name,
                 friendly_name,
                 description,
                 cores,
-                memory,
+                memory: memory_bytes,
                 enabled,
                 image_src,
                 docker_registry,
@@ -313,11 +338,16 @@ fn handle_update(
             gpus_override,
             auto_prune_images,
         } => {
+            let memory_override_bytes = memory_override
+                .as_deref()
+                .map(parse_memory)
+                .transpose()
+                .map_err(|e| anyhow::anyhow!(e))?;
             let req = UpdateAgentRequest {
                 agent_id: id,
                 enabled,
                 cores_override,
-                memory_override,
+                memory_override: memory_override_bytes,
                 gpus_override,
                 auto_prune_images,
             };

@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-use crate::output::display::short_id;
+use crate::output::display::{format_bytes, short_id};
 use crate::resource::Resource;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Image {
     pub image_id: String,
     #[serde(default)]
@@ -69,20 +69,5 @@ impl Resource for Image {
             ("MEMORY", self.memory.map(format_bytes).unwrap_or_default()),
             ("IMAGE SRC", self.image_src.clone().unwrap_or_default()),
         ]
-    }
-}
-
-fn format_bytes(bytes: i64) -> String {
-    if bytes < 0 {
-        return bytes.to_string();
-    }
-    const GB: i64 = 1_073_741_824;
-    const MB: i64 = 1_048_576;
-    if bytes >= GB && bytes % GB == 0 {
-        format!("{}GB", bytes / GB)
-    } else if bytes >= MB && bytes % MB == 0 {
-        format!("{}MB", bytes / MB)
-    } else {
-        bytes.to_string()
     }
 }

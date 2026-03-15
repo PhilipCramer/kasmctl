@@ -29,9 +29,9 @@ pub enum UpdateResource {
         #[arg(long)]
         cores: Option<f64>,
 
-        /// Memory in bytes
+        /// Memory to allocate (e.g. 3GB, 512MB, or raw bytes)
         #[arg(long)]
-        memory: Option<i64>,
+        memory: Option<String>,
 
         /// Enable or disable the image
         #[arg(long)]
@@ -71,9 +71,9 @@ pub enum UpdateResource {
         #[arg(long)]
         cores_override: Option<f64>,
 
-        /// Override memory allocation in bytes
+        /// Override memory allocation (e.g. 3GB, 512MB, or raw bytes)
         #[arg(long)]
-        memory_override: Option<i64>,
+        memory_override: Option<String>,
 
         /// Override GPU allocation
         #[arg(long)]

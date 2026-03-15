@@ -368,6 +368,45 @@ impl ServerFilters {
     }
 }
 
+/// Parse a human-friendly memory string into a byte count.
+///
+/// Accepts suffixes `GB` and `MB` (case-insensitive), e.g. `3GB`, `512MB`, `1.5GB`.
+/// Plain integers are treated as raw bytes and returned as-is (backward compatible).
+/// Returns an error for zero, negative, unknown suffixes, or malformed input.
+pub fn parse_memory(s: &str) -> Result<i64, String> {
+    if s.is_empty() {
+        return Err(format!("memory value must not be empty: {s:?}"));
+    }
+
+    let lower = s.to_lowercase();
+
+    let (numeric_str, multiplier): (&str, i64) = if let Some(prefix) = lower.strip_suffix("gb") {
+        (prefix, 1_073_741_824)
+    } else if let Some(prefix) = lower.strip_suffix("mb") {
+        (prefix, 1_048_576)
+    } else {
+        // Raw bytes — must parse as a plain integer (no fractional bytes).
+        let bytes: i64 = s.parse().map_err(|_| {
+            format!("invalid memory value {s:?}: expected a number with optional GB/MB suffix")
+        })?;
+        if bytes <= 0 {
+            return Err(format!("memory must be greater than zero: {s:?}"));
+        }
+        return Ok(bytes);
+    };
+
+    let value: f64 = numeric_str
+        .parse()
+        .map_err(|_| format!("invalid number in memory value {s:?}"))?;
+
+    if value <= 0.0 {
+        return Err(format!("memory must be greater than zero: {s:?}"));
+    }
+
+    let bytes = (value * multiplier as f64).round() as i64;
+    Ok(bytes)
+}
+
 /// Parse a human-friendly duration string into total seconds.
 ///
 /// Supports combinations like `30m`, `2h`, `1d`, `1h30m`, `1d12h`.
@@ -1006,5 +1045,64 @@ mod tests {
     #[test]
     fn parse_duration_rejects_overflow() {
         assert!(parse_duration("999999999999999999d").is_err());
+    }
+
+    // --- parse_memory tests ---
+
+    #[test]
+    fn parse_memory_gb() {
+        assert_eq!(parse_memory("3GB").unwrap(), 3 * 1_073_741_824);
+    }
+
+    #[test]
+    fn parse_memory_mb() {
+        assert_eq!(parse_memory("512MB").unwrap(), 512 * 1_048_576);
+    }
+
+    #[test]
+    fn parse_memory_lowercase() {
+        assert_eq!(parse_memory("2gb").unwrap(), 2 * 1_073_741_824);
+        assert_eq!(parse_memory("256mb").unwrap(), 256 * 1_048_576);
+    }
+
+    #[test]
+    fn parse_memory_raw_bytes() {
+        assert_eq!(parse_memory("1073741824").unwrap(), 1_073_741_824);
+    }
+
+    #[test]
+    fn parse_memory_fractional_gb() {
+        // 1.5GB = 1.5 * 1_073_741_824 = 1_610_612_736
+        assert_eq!(parse_memory("1.5GB").unwrap(), 1_610_612_736);
+    }
+
+    #[test]
+    fn parse_memory_rejects_zero_gb() {
+        assert!(parse_memory("0GB").is_err());
+    }
+
+    #[test]
+    fn parse_memory_rejects_zero_bytes() {
+        assert!(parse_memory("0").is_err());
+    }
+
+    #[test]
+    fn parse_memory_rejects_negative_bytes() {
+        assert!(parse_memory("-1").is_err());
+    }
+
+    #[test]
+    fn parse_memory_rejects_empty() {
+        assert!(parse_memory("").is_err());
+    }
+
+    #[test]
+    fn parse_memory_rejects_unknown_suffix() {
+        assert!(parse_memory("3TB").is_err());
+    }
+
+    #[test]
+    fn parse_memory_rejects_invalid_number() {
+        assert!(parse_memory("abcGB").is_err());
     }
 }

@@ -1510,3 +1510,122 @@ fn exec_command_kasm_with_workdir() {
 
     mock.assert();
 }
+
+// ===================== resolve_image =====================
+
+const TWO_IMAGES_BODY: &str = r#"{"images":[
+    {"image_id":"aaaa1111-bbbb-cccc-dddd-eeee00000001","friendly_name":"Ubuntu Desktop","enabled":true},
+    {"image_id":"aaaa2222-bbbb-cccc-dddd-eeee00000002","friendly_name":"Kali Linux","enabled":true}
+]}"#;
+
+#[test]
+fn resolve_image_exact_id_match() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/public/get_images")
+        .with_status(200)
+        .with_body(TWO_IMAGES_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let image = client
+        .resolve_image("aaaa1111-bbbb-cccc-dddd-eeee00000001")
+        .unwrap();
+
+    assert_eq!(image.image_id, "aaaa1111-bbbb-cccc-dddd-eeee00000001");
+    assert_eq!(image.friendly_name.as_deref(), Some("Ubuntu Desktop"));
+}
+
+#[test]
+fn resolve_image_prefix_match() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/public/get_images")
+        .with_status(200)
+        .with_body(TWO_IMAGES_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    // "aaaa1111" is a prefix that matches only the first image
+    let image = client.resolve_image("aaaa1111").unwrap();
+
+    assert_eq!(image.image_id, "aaaa1111-bbbb-cccc-dddd-eeee00000001");
+}
+
+#[test]
+fn resolve_image_friendly_name_match() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/public/get_images")
+        .with_status(200)
+        .with_body(TWO_IMAGES_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let image = client.resolve_image("Kali Linux").unwrap();
+
+    assert_eq!(image.image_id, "aaaa2222-bbbb-cccc-dddd-eeee00000002");
+    assert_eq!(image.friendly_name.as_deref(), Some("Kali Linux"));
+}
+
+#[test]
+fn resolve_image_friendly_name_case_insensitive() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/public/get_images")
+        .with_status(200)
+        .with_body(TWO_IMAGES_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let image = client.resolve_image("kali linux").unwrap();
+
+    assert_eq!(image.image_id, "aaaa2222-bbbb-cccc-dddd-eeee00000002");
+}
+
+#[test]
+fn resolve_image_ambiguous_prefix_error() {
+    let mut server = mockito::Server::new();
+    // Both images share the "aaaa" prefix
+    let _mock = server
+        .mock("POST", "/api/public/get_images")
+        .with_status(200)
+        .with_body(TWO_IMAGES_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_image("aaaa");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("ambiguous"),
+        "expected 'ambiguous' in error, got: {err}"
+    );
+}
+
+#[test]
+fn resolve_image_not_found_error() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/public/get_images")
+        .with_status(200)
+        .with_body(TWO_IMAGES_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_image("nonexistent-image");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("not found"),
+        "expected 'not found' in error, got: {err}"
+    );
+}

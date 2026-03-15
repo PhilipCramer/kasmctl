@@ -488,7 +488,7 @@ fn parse_update_agent_with_all_flags() {
     assert_eq!(id, "agent-abc");
     assert_eq!(enabled, Some(false));
     assert_eq!(cores_override, Some(4.0));
-    assert_eq!(memory_override, Some(4294967296));
+    assert_eq!(memory_override.as_deref(), Some("4294967296"));
     assert_eq!(gpus_override, Some(1.0));
     assert_eq!(auto_prune_images.as_deref(), Some("daily"));
 }
@@ -655,7 +655,7 @@ fn parse_create_image_all_flags() {
     assert_eq!(friendly_name, "Ubuntu Desktop");
     assert_eq!(description.as_deref(), Some("Full Ubuntu desktop"));
     assert_eq!(cores, Some(4.0));
-    assert_eq!(memory, Some(4294967296));
+    assert_eq!(memory.as_deref(), Some("4294967296"));
     assert!(!enabled);
     assert_eq!(image_src, "Server");
     assert_eq!(
@@ -1542,7 +1542,7 @@ fn parse_update_image_with_all_flags() {
     assert_eq!(friendly_name.as_deref(), Some("Ubuntu Desktop"));
     assert_eq!(description.as_deref(), Some("A desktop workspace"));
     assert_eq!(cores, Some(4.0));
-    assert_eq!(memory, Some(4096000000));
+    assert_eq!(memory.as_deref(), Some("4096000000"));
     assert_eq!(enabled, Some(true));
     assert_eq!(image_src.as_deref(), Some("img/thumbnails/ubuntu.png"));
     assert_eq!(
@@ -1590,6 +1590,90 @@ fn parse_update_image_with_partial_flags() {
 fn parse_update_no_subcommand_fails() {
     let result = Cli::try_parse_from(["kasmctl", "update"]);
     assert!(result.is_err());
+}
+
+// --- Memory suffix CLI tests ---
+
+#[test]
+fn parse_create_image_memory_gb_suffix() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "image",
+        "--name",
+        "kasmweb/ubuntu:1.18.0",
+        "--friendly-name",
+        "Ubuntu Desktop",
+        "--memory",
+        "3GB",
+    ])
+    .unwrap();
+    let Command::Create(args) = cli.command else {
+        panic!("expected Create command");
+    };
+    let CreateResource::Image { memory, .. } = args.resource else {
+        panic!("expected Image resource");
+    };
+    assert_eq!(memory.as_deref(), Some("3GB"));
+}
+
+#[test]
+fn parse_create_image_memory_mb_suffix() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "create",
+        "image",
+        "--name",
+        "kasmweb/ubuntu:1.18.0",
+        "--friendly-name",
+        "Ubuntu Desktop",
+        "--memory",
+        "512MB",
+    ])
+    .unwrap();
+    let Command::Create(args) = cli.command else {
+        panic!("expected Create command");
+    };
+    let CreateResource::Image { memory, .. } = args.resource else {
+        panic!("expected Image resource");
+    };
+    assert_eq!(memory.as_deref(), Some("512MB"));
+}
+
+#[test]
+fn parse_update_image_memory_gb_suffix() {
+    let cli =
+        Cli::try_parse_from(["kasmctl", "update", "image", "img-abc", "--memory", "2GB"]).unwrap();
+    let Command::Update(args) = cli.command else {
+        panic!("expected Update command");
+    };
+    let UpdateResource::Image { memory, .. } = args.resource else {
+        panic!("expected Image resource");
+    };
+    assert_eq!(memory.as_deref(), Some("2GB"));
+}
+
+#[test]
+fn parse_update_agent_memory_override_gb_suffix() {
+    let cli = Cli::try_parse_from([
+        "kasmctl",
+        "update",
+        "agent",
+        "agent-abc",
+        "--memory-override",
+        "4GB",
+    ])
+    .unwrap();
+    let Command::Update(args) = cli.command else {
+        panic!("expected Update command");
+    };
+    let UpdateResource::Agent {
+        memory_override, ..
+    } = args.resource
+    else {
+        panic!("expected Agent resource");
+    };
+    assert_eq!(memory_override.as_deref(), Some("4GB"));
 }
 
 // --- Get servers ---
