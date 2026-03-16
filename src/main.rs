@@ -106,11 +106,7 @@ fn handle_get(client: &KasmClient, resource: GetResource, format: &OutputFormat)
             println!("{}", output::render_list(&images, format)?);
         }
         GetResource::Zone { id } => {
-            let zones = client.get_zones().context("failed to list zones")?;
-            let zone = zones
-                .into_iter()
-                .find(|z| z.zone_id == id)
-                .ok_or_else(|| anyhow::anyhow!("zone {id:?} not found"))?;
+            let zone = client.resolve_zone(&id).context("failed to resolve zone")?;
             println!("{}", output::render_one(&zone, format)?);
         }
         GetResource::Zones { filters } => {
@@ -119,11 +115,9 @@ fn handle_get(client: &KasmClient, resource: GetResource, format: &OutputFormat)
             println!("{}", output::render_list(&zones, format)?);
         }
         GetResource::Agent { id } => {
-            let agents = client.get_agents().context("failed to list agents")?;
-            let agent = agents
-                .into_iter()
-                .find(|a| a.agent_id == id)
-                .ok_or_else(|| anyhow::anyhow!("agent {id:?} not found"))?;
+            let agent = client
+                .resolve_agent(&id)
+                .context("failed to resolve agent")?;
             println!("{}", output::render_one(&agent, format)?);
         }
         GetResource::Agents { filters } => {
@@ -132,11 +126,9 @@ fn handle_get(client: &KasmClient, resource: GetResource, format: &OutputFormat)
             println!("{}", output::render_list(&agents, format)?);
         }
         GetResource::Server { id } => {
-            let servers = client.get_servers().context("failed to list servers")?;
-            let server = servers
-                .into_iter()
-                .find(|s| s.server_id == id)
-                .ok_or_else(|| anyhow::anyhow!("server {id:?} not found"))?;
+            let server = client
+                .resolve_server(&id)
+                .context("failed to resolve server")?;
             println!("{}", output::render_one(&server, format)?);
         }
         GetResource::Servers { filters } => {
@@ -229,12 +221,15 @@ fn handle_create(
             max_simultaneous_users,
             pool_id,
         } => {
+            let resolved_zone = client
+                .resolve_zone(&zone)
+                .context("failed to resolve zone")?;
             let params = kasmctl::api::servers::CreateServerParams {
                 friendly_name,
                 hostname,
                 connection_type,
                 connection_port,
-                zone_id: zone,
+                zone_id: resolved_zone.zone_id,
                 enabled,
                 connection_username,
                 connection_info,
@@ -253,16 +248,20 @@ fn handle_create(
 
 fn handle_delete(client: &KasmClient, resource: DeleteResource) -> Result<()> {
     match resource {
-        DeleteResource::Session { id } => {
+        DeleteResource::Session { id, yes } => {
             let user_id = client
                 .resolve_user_id(&id)
                 .context("failed to resolve user for session")?;
+            if !confirm::confirm(&format!("Delete session {id}?"), yes) {
+                eprintln!("Aborted.");
+                return Ok(());
+            }
             client
                 .destroy_kasm(&id, &user_id)
                 .context("failed to delete session")?;
             println!("Session {id} deleted.");
         }
-        DeleteResource::Image { id } => {
+        DeleteResource::Image { id, yes } => {
             let image = client
                 .resolve_image(&id)
                 .context("failed to resolve image")?;
@@ -271,16 +270,32 @@ fn handle_delete(client: &KasmClient, resource: DeleteResource) -> Result<()> {
                 .as_deref()
                 .unwrap_or(&image.image_id)
                 .to_string();
+            if !confirm::confirm(&format!("Delete image {display_name:?}?"), yes) {
+                eprintln!("Aborted.");
+                return Ok(());
+            }
             client
                 .delete_image(&image.image_id)
                 .context("failed to delete image")?;
             println!("Image {display_name:?} deleted.");
         }
-        DeleteResource::Server { id } => {
+        DeleteResource::Server { id, yes } => {
+            let server = client
+                .resolve_server(&id)
+                .context("failed to resolve server")?;
+            let display_name = server
+                .friendly_name
+                .as_deref()
+                .unwrap_or(&server.server_id)
+                .to_string();
+            if !confirm::confirm(&format!("Delete server {display_name:?}?"), yes) {
+                eprintln!("Aborted.");
+                return Ok(());
+            }
             client
-                .delete_server(&id)
+                .delete_server(&server.server_id)
                 .context("failed to delete server")?;
-            println!("Server {id} deleted.");
+            println!("Server {display_name:?} deleted.");
         }
     }
     Ok(())
@@ -341,13 +356,16 @@ fn handle_update(
             gpus_override,
             auto_prune_images,
         } => {
+            let resolved = client
+                .resolve_agent(&id)
+                .context("failed to resolve agent")?;
             let memory_override_bytes = memory_override
                 .as_deref()
                 .map(parse_memory)
                 .transpose()
                 .map_err(|e| anyhow::anyhow!(e))?;
             let req = UpdateAgentRequest {
-                agent_id: id,
+                agent_id: resolved.agent_id,
                 enabled,
                 cores_override,
                 memory_override: memory_override_bytes,
@@ -373,8 +391,16 @@ fn handle_update(
             zone_id,
             pool_id,
         } => {
+            let resolved = client
+                .resolve_server(&id)
+                .context("failed to resolve server")?;
+            let resolved_zone_id = zone_id
+                .as_deref()
+                .map(|z| client.resolve_zone(z).map(|zone| zone.zone_id))
+                .transpose()
+                .context("failed to resolve zone")?;
             let req = UpdateServerRequest {
-                server_id: id,
+                server_id: resolved.server_id,
                 friendly_name,
                 hostname,
                 enabled,
@@ -384,7 +410,7 @@ fn handle_update(
                 connection_info,
                 max_simultaneous_sessions,
                 max_simultaneous_users,
-                zone_id,
+                zone_id: resolved_zone_id,
                 pool_id,
             };
             let server = client

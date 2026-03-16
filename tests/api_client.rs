@@ -1629,3 +1629,436 @@ fn resolve_image_not_found_error() {
         "expected 'not found' in error, got: {err}"
     );
 }
+
+// ===================== resolve_server =====================
+
+const TWO_SERVERS_BODY: &str = r#"{"servers":[
+    {"server_id":"aaaa1111-bbbb-cccc-dddd-eeee00000001","friendly_name":"Prod Server","hostname":"10.0.0.1","enabled":true},
+    {"server_id":"aaaa2222-bbbb-cccc-dddd-eeee00000002","friendly_name":"Dev Server","hostname":"10.0.0.2","enabled":true}
+]}"#;
+
+#[test]
+fn resolve_server_exact_id() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_servers")
+        .with_status(200)
+        .with_body(TWO_SERVERS_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let srv = client
+        .resolve_server("aaaa1111-bbbb-cccc-dddd-eeee00000001")
+        .unwrap();
+
+    assert_eq!(srv.server_id, "aaaa1111-bbbb-cccc-dddd-eeee00000001");
+    assert_eq!(srv.friendly_name.as_deref(), Some("Prod Server"));
+}
+
+#[test]
+fn resolve_server_prefix() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_servers")
+        .with_status(200)
+        .with_body(TWO_SERVERS_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    // "aaaa1111" prefix matches only the first server
+    let srv = client.resolve_server("aaaa1111").unwrap();
+
+    assert_eq!(srv.server_id, "aaaa1111-bbbb-cccc-dddd-eeee00000001");
+}
+
+#[test]
+fn resolve_server_friendly_name() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_servers")
+        .with_status(200)
+        .with_body(TWO_SERVERS_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    // Case-insensitive friendly name match
+    let srv = client.resolve_server("dev server").unwrap();
+
+    assert_eq!(srv.server_id, "aaaa2222-bbbb-cccc-dddd-eeee00000002");
+    assert_eq!(srv.friendly_name.as_deref(), Some("Dev Server"));
+}
+
+#[test]
+fn resolve_server_hostname() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_servers")
+        .with_status(200)
+        .with_body(TWO_SERVERS_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    // Case-insensitive hostname match
+    let srv = client.resolve_server("10.0.0.1").unwrap();
+
+    assert_eq!(srv.server_id, "aaaa1111-bbbb-cccc-dddd-eeee00000001");
+}
+
+#[test]
+fn resolve_server_ambiguous_prefix() {
+    let mut server = mockito::Server::new();
+    // Both servers share the "aaaa" prefix
+    let _mock = server
+        .mock("POST", "/api/admin/get_servers")
+        .with_status(200)
+        .with_body(TWO_SERVERS_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_server("aaaa");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("ambiguous"),
+        "expected 'ambiguous' in error, got: {err}"
+    );
+}
+
+#[test]
+fn resolve_server_ambiguous_friendly_name() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_servers")
+        .with_status(200)
+        .with_body(
+            r#"{"servers":[
+                {"server_id":"aaaa1111-bbbb-cccc-dddd-eeee00000001","friendly_name":"Production"},
+                {"server_id":"aaaa2222-bbbb-cccc-dddd-eeee00000002","friendly_name":"PRODUCTION"}
+            ]}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_server("production");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("ambiguous"),
+        "expected 'ambiguous' in error, got: {err}"
+    );
+}
+
+#[test]
+fn resolve_server_ambiguous_hostname() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_servers")
+        .with_status(200)
+        .with_body(
+            r#"{"servers":[
+                {"server_id":"aaaa1111-bbbb-cccc-dddd-eeee00000001","hostname":"worker.local"},
+                {"server_id":"aaaa2222-bbbb-cccc-dddd-eeee00000002","hostname":"WORKER.LOCAL"}
+            ]}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_server("worker.local");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("ambiguous"),
+        "expected 'ambiguous' in error, got: {err}"
+    );
+}
+
+#[test]
+fn resolve_server_not_found() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_servers")
+        .with_status(200)
+        .with_body(TWO_SERVERS_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_server("nonexistent-server");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("not found"),
+        "expected 'not found' in error, got: {err}"
+    );
+}
+
+// ===================== resolve_agent =====================
+
+const TWO_AGENTS_BODY: &str = r#"{"agents":[
+    {"agent_id":"aaaa1111-bbbb-cccc-dddd-eeee00000001","hostname":"kasm-agent-prod","status":"running","enabled":true},
+    {"agent_id":"aaaa2222-bbbb-cccc-dddd-eeee00000002","hostname":"kasm-agent-dev","status":"running","enabled":true}
+]}"#;
+
+#[test]
+fn resolve_agent_exact_id() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_agents")
+        .with_status(200)
+        .with_body(TWO_AGENTS_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let agent = client
+        .resolve_agent("aaaa1111-bbbb-cccc-dddd-eeee00000001")
+        .unwrap();
+
+    assert_eq!(agent.agent_id, "aaaa1111-bbbb-cccc-dddd-eeee00000001");
+    assert_eq!(agent.hostname.as_deref(), Some("kasm-agent-prod"));
+}
+
+#[test]
+fn resolve_agent_prefix() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_agents")
+        .with_status(200)
+        .with_body(TWO_AGENTS_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    // "aaaa1111" prefix matches only the first agent
+    let agent = client.resolve_agent("aaaa1111").unwrap();
+
+    assert_eq!(agent.agent_id, "aaaa1111-bbbb-cccc-dddd-eeee00000001");
+}
+
+#[test]
+fn resolve_agent_hostname() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_agents")
+        .with_status(200)
+        .with_body(TWO_AGENTS_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    // Case-insensitive hostname match
+    let agent = client.resolve_agent("KASM-AGENT-DEV").unwrap();
+
+    assert_eq!(agent.agent_id, "aaaa2222-bbbb-cccc-dddd-eeee00000002");
+    assert_eq!(agent.hostname.as_deref(), Some("kasm-agent-dev"));
+}
+
+#[test]
+fn resolve_agent_ambiguous_prefix() {
+    let mut server = mockito::Server::new();
+    // Both agents share the "aaaa" prefix
+    let _mock = server
+        .mock("POST", "/api/admin/get_agents")
+        .with_status(200)
+        .with_body(TWO_AGENTS_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_agent("aaaa");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("ambiguous"),
+        "expected 'ambiguous' in error, got: {err}"
+    );
+}
+
+#[test]
+fn resolve_agent_ambiguous_hostname() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_agents")
+        .with_status(200)
+        .with_body(
+            r#"{"agents":[
+                {"agent_id":"aaaa1111-bbbb-cccc-dddd-eeee00000001","hostname":"worker"},
+                {"agent_id":"aaaa2222-bbbb-cccc-dddd-eeee00000002","hostname":"WORKER"}
+            ]}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_agent("worker");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("ambiguous"),
+        "expected 'ambiguous' in error, got: {err}"
+    );
+}
+
+#[test]
+fn resolve_agent_not_found() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/admin/get_agents")
+        .with_status(200)
+        .with_body(TWO_AGENTS_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_agent("nonexistent-agent");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("not found"),
+        "expected 'not found' in error, got: {err}"
+    );
+}
+
+// ===================== resolve_zone =====================
+
+const TWO_ZONES_BODY: &str = r#"{"zones":[
+    {"zone_id":"aaaa1111-bbbb-cccc-dddd-eeee00000001","zone_name":"us-east","load_balancing_strategy":"round_robin"},
+    {"zone_id":"aaaa2222-bbbb-cccc-dddd-eeee00000002","zone_name":"eu-west","load_balancing_strategy":"round_robin"}
+]}"#;
+
+#[test]
+fn resolve_zone_exact_id() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/public/get_zones")
+        .with_status(200)
+        .with_body(TWO_ZONES_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let zone = client
+        .resolve_zone("aaaa1111-bbbb-cccc-dddd-eeee00000001")
+        .unwrap();
+
+    assert_eq!(zone.zone_id, "aaaa1111-bbbb-cccc-dddd-eeee00000001");
+    assert_eq!(zone.zone_name.as_deref(), Some("us-east"));
+}
+
+#[test]
+fn resolve_zone_prefix() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/public/get_zones")
+        .with_status(200)
+        .with_body(TWO_ZONES_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    // "aaaa1111" prefix matches only the first zone
+    let zone = client.resolve_zone("aaaa1111").unwrap();
+
+    assert_eq!(zone.zone_id, "aaaa1111-bbbb-cccc-dddd-eeee00000001");
+}
+
+#[test]
+fn resolve_zone_name() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/public/get_zones")
+        .with_status(200)
+        .with_body(TWO_ZONES_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    // Case-insensitive zone_name match
+    let zone = client.resolve_zone("EU-WEST").unwrap();
+
+    assert_eq!(zone.zone_id, "aaaa2222-bbbb-cccc-dddd-eeee00000002");
+    assert_eq!(zone.zone_name.as_deref(), Some("eu-west"));
+}
+
+#[test]
+fn resolve_zone_ambiguous_prefix() {
+    let mut server = mockito::Server::new();
+    // Both zones share the "aaaa" prefix
+    let _mock = server
+        .mock("POST", "/api/public/get_zones")
+        .with_status(200)
+        .with_body(TWO_ZONES_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_zone("aaaa");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("ambiguous"),
+        "expected 'ambiguous' in error, got: {err}"
+    );
+}
+
+#[test]
+fn resolve_zone_ambiguous_name() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/public/get_zones")
+        .with_status(200)
+        .with_body(
+            r#"{"zones":[
+                {"zone_id":"aaaa1111-bbbb-cccc-dddd-eeee00000001","zone_name":"us-east"},
+                {"zone_id":"aaaa2222-bbbb-cccc-dddd-eeee00000002","zone_name":"US-EAST"}
+            ]}"#,
+        )
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_zone("us-east");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("ambiguous"),
+        "expected 'ambiguous' in error, got: {err}"
+    );
+}
+
+#[test]
+fn resolve_zone_not_found() {
+    let mut server = mockito::Server::new();
+    let _mock = server
+        .mock("POST", "/api/public/get_zones")
+        .with_status(200)
+        .with_body(TWO_ZONES_BODY)
+        .create();
+
+    let ctx = test_context(&server.url());
+    let client = KasmClient::new(&ctx).unwrap();
+    let result = client.resolve_zone("nonexistent-zone");
+
+    assert!(result.is_err());
+    let err = result.unwrap_err().to_string();
+    assert!(
+        err.contains("not found"),
+        "expected 'not found' in error, got: {err}"
+    );
+}

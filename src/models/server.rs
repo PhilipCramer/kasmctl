@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::output::display::short_id;
 use crate::resource::Resource;
 
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Server {
     pub server_id: String,
     #[serde(default)]
@@ -43,6 +43,7 @@ impl Resource for Server {
             "TYPE",
             "ENABLED",
             "SESSIONS",
+            "ZONE",
         ]
     }
 
@@ -56,6 +57,7 @@ impl Resource for Server {
             self.max_simultaneous_sessions
                 .map(|v| v.to_string())
                 .unwrap_or_default(),
+            short_id(&self.zone_id.clone().unwrap_or_default()).to_string(),
         ]
     }
 

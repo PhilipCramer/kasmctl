@@ -85,7 +85,7 @@ pub enum CreateResource {
         #[arg(long)]
         connection_port: i32,
 
-        /// Zone ID to assign the server to
+        /// Zone to assign the server to (exact ID, ID prefix, or case-insensitive zone name)
         #[arg(long)]
         zone: String,
 

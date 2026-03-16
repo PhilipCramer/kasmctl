@@ -57,10 +57,10 @@ pub enum UpdateResource {
         #[arg(long)]
         hidden: Option<bool>,
     },
-    /// Update a docker agent
+    /// Update a docker agent by ID, ID prefix, or hostname
     #[command(alias = "docker-agent")]
     Agent {
-        /// Agent ID to update
+        /// Agent to update (exact ID, ID prefix, or case-insensitive hostname)
         id: String,
 
         /// Enable or disable the agent
@@ -84,9 +84,9 @@ pub enum UpdateResource {
         auto_prune_images: Option<String>,
     },
 
-    /// Update an existing server
+    /// Update an existing server by ID, ID prefix, friendly name, or hostname
     Server {
-        /// Server ID to update
+        /// Server to update (exact ID, ID prefix, case-insensitive friendly name, or hostname)
         id: String,
 
         /// Human-readable name

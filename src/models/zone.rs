@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::output::display::short_id;
 use crate::resource::Resource;
 
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Zone {
     pub zone_id: String,
     #[serde(default)]

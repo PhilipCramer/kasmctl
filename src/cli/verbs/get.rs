@@ -32,9 +32,9 @@ pub enum GetResource {
         #[command(flatten)]
         filters: ImageFilters,
     },
-    /// Get a specific zone by ID
+    /// Get a specific zone by ID, ID prefix, or name
     Zone {
-        /// Zone ID
+        /// Zone to look up (exact ID, ID prefix, or case-insensitive zone name)
         id: String,
     },
     /// List all zones
@@ -42,10 +42,10 @@ pub enum GetResource {
         #[command(flatten)]
         filters: ZoneFilters,
     },
-    /// Get a specific docker agent by ID
+    /// Get a specific docker agent by ID, ID prefix, or hostname
     #[command(alias = "docker-agent")]
     Agent {
-        /// Agent ID
+        /// Agent to look up (exact ID, ID prefix, or case-insensitive hostname)
         id: String,
     },
     /// List all docker agents
@@ -54,9 +54,9 @@ pub enum GetResource {
         #[command(flatten)]
         filters: AgentFilters,
     },
-    /// Get a specific server by ID
+    /// Get a specific server by ID, ID prefix, friendly name, or hostname
     Server {
-        /// Server ID
+        /// Server to look up (exact ID, ID prefix, case-insensitive friendly name, or hostname)
         id: String,
     },
     /// List all servers

@@ -253,17 +253,26 @@ pub struct AgentFilters {
     /// Filter by agent status (case-insensitive)
     #[arg(long)]
     pub status: Option<String>,
+
+    /// Filter by hostname (case-insensitive substring match)
+    #[arg(long)]
+    pub name: Option<String>,
 }
 
 impl AgentFilters {
     /// Returns true when no filters are set.
     pub fn is_empty(&self) -> bool {
-        self.zone.is_none() && !self.enabled && !self.disabled && self.status.is_none()
+        self.zone.is_none()
+            && !self.enabled
+            && !self.disabled
+            && self.status.is_none()
+            && self.name.is_none()
     }
 
     /// Apply all filters to a list of agents, removing non-matching entries.
     pub fn apply(&self, agents: &mut Vec<Agent>) {
         let status_lower = self.status.as_ref().map(|s| s.to_lowercase());
+        let name_lower = self.name.as_ref().map(|n| n.to_lowercase());
 
         agents.retain(|a| {
             if let Some(ref zone_id) = self.zone
@@ -288,8 +297,76 @@ impl AgentFilters {
                 return false;
             }
 
+            if let Some(ref pattern) = name_lower
+                && a.hostname
+                    .as_ref()
+                    .is_none_or(|h| !h.to_lowercase().contains(pattern.as_str()))
+            {
+                return false;
+            }
+
             true
         });
+    }
+}
+
+#[cfg(test)]
+mod agent_filter_tests {
+    use super::*;
+
+    fn make_agent(hostname: Option<&str>) -> Agent {
+        Agent {
+            agent_id: "agent-1".into(),
+            hostname: hostname.map(|s| s.to_string()),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn agent_filter_by_name_case_insensitive() {
+        let filters = AgentFilters {
+            name: Some("Worker".into()),
+            ..Default::default()
+        };
+        let mut agents = vec![make_agent(Some("worker-01")), make_agent(Some("proxy-01"))];
+        filters.apply(&mut agents);
+        assert_eq!(agents.len(), 1);
+        assert_eq!(agents[0].hostname.as_deref(), Some("worker-01"));
+    }
+
+    #[test]
+    fn agent_filter_by_name_substring() {
+        let filters = AgentFilters {
+            name: Some("ork".into()),
+            ..Default::default()
+        };
+        let mut agents = vec![make_agent(Some("worker-01")), make_agent(Some("proxy-01"))];
+        filters.apply(&mut agents);
+        assert_eq!(agents.len(), 1);
+        assert_eq!(agents[0].hostname.as_deref(), Some("worker-01"));
+    }
+
+    #[test]
+    fn agent_filter_by_name_no_match() {
+        let filters = AgentFilters {
+            name: Some("missing".into()),
+            ..Default::default()
+        };
+        let mut agents = vec![make_agent(Some("worker-01"))];
+        filters.apply(&mut agents);
+        assert_eq!(agents.len(), 0);
+    }
+
+    #[test]
+    fn agent_filter_by_name_excludes_none_hostname() {
+        let filters = AgentFilters {
+            name: Some("worker".into()),
+            ..Default::default()
+        };
+        let mut agents = vec![make_agent(Some("worker-01")), make_agent(None)];
+        filters.apply(&mut agents);
+        assert_eq!(agents.len(), 1);
+        assert_eq!(agents[0].hostname.as_deref(), Some("worker-01"));
     }
 }
 

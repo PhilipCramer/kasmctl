@@ -758,7 +758,7 @@ fn parse_delete_session() {
     let Command::Delete(args) = cli.command else {
         panic!("expected Delete command");
     };
-    let DeleteResource::Session { id } = args.resource else {
+    let DeleteResource::Session { id, .. } = args.resource else {
         panic!("expected Session resource");
     };
     assert_eq!(id, "kasm-789");
@@ -784,7 +784,7 @@ fn parse_delete_image() {
     let Command::Delete(args) = cli.command else {
         panic!("expected Delete command");
     };
-    let DeleteResource::Image { id } = args.resource else {
+    let DeleteResource::Image { id, .. } = args.resource else {
         panic!("expected Image resource");
     };
     assert_eq!(id, "img-abc");
@@ -2064,7 +2064,7 @@ fn parse_delete_server() {
     let Command::Delete(args) = cli.command else {
         panic!("expected Delete command");
     };
-    let DeleteResource::Server { id } = args.resource else {
+    let DeleteResource::Server { id, .. } = args.resource else {
         panic!("expected Server resource");
     };
     assert_eq!(id, "srv-abc");
@@ -2234,4 +2234,144 @@ fn parse_exec_sessions_kasms_alias() {
         panic!("expected Exec command");
     };
     assert!(matches!(args.resource, ExecResource::Sessions { .. }));
+}
+
+// --- Delete --yes / -y flag ---
+
+#[test]
+fn parse_delete_session_yes_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "delete", "session", "kasm-789", "--yes"]).unwrap();
+    let Command::Delete(args) = cli.command else {
+        panic!("expected Delete command");
+    };
+    let DeleteResource::Session { id, yes } = args.resource else {
+        panic!("expected Session resource");
+    };
+    assert_eq!(id, "kasm-789");
+    assert!(yes);
+}
+
+#[test]
+fn parse_delete_session_y_short_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "delete", "session", "kasm-789", "-y"]).unwrap();
+    let Command::Delete(args) = cli.command else {
+        panic!("expected Delete command");
+    };
+    let DeleteResource::Session { yes, .. } = args.resource else {
+        panic!("expected Session resource");
+    };
+    assert!(yes);
+}
+
+#[test]
+fn parse_delete_session_no_yes_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "delete", "session", "kasm-789"]).unwrap();
+    let Command::Delete(args) = cli.command else {
+        panic!("expected Delete command");
+    };
+    let DeleteResource::Session { yes, .. } = args.resource else {
+        panic!("expected Session resource");
+    };
+    assert!(!yes);
+}
+
+#[test]
+fn parse_delete_image_yes_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "delete", "image", "img-abc", "--yes"]).unwrap();
+    let Command::Delete(args) = cli.command else {
+        panic!("expected Delete command");
+    };
+    let DeleteResource::Image { id, yes } = args.resource else {
+        panic!("expected Image resource");
+    };
+    assert_eq!(id, "img-abc");
+    assert!(yes);
+}
+
+#[test]
+fn parse_delete_image_y_short_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "delete", "image", "img-abc", "-y"]).unwrap();
+    let Command::Delete(args) = cli.command else {
+        panic!("expected Delete command");
+    };
+    let DeleteResource::Image { yes, .. } = args.resource else {
+        panic!("expected Image resource");
+    };
+    assert!(yes);
+}
+
+#[test]
+fn parse_delete_image_no_yes_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "delete", "image", "img-abc"]).unwrap();
+    let Command::Delete(args) = cli.command else {
+        panic!("expected Delete command");
+    };
+    let DeleteResource::Image { yes, .. } = args.resource else {
+        panic!("expected Image resource");
+    };
+    assert!(!yes);
+}
+
+#[test]
+fn parse_delete_server_yes_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "delete", "server", "srv-abc", "--yes"]).unwrap();
+    let Command::Delete(args) = cli.command else {
+        panic!("expected Delete command");
+    };
+    let DeleteResource::Server { id, yes } = args.resource else {
+        panic!("expected Server resource");
+    };
+    assert_eq!(id, "srv-abc");
+    assert!(yes);
+}
+
+#[test]
+fn parse_delete_server_y_short_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "delete", "server", "srv-abc", "-y"]).unwrap();
+    let Command::Delete(args) = cli.command else {
+        panic!("expected Delete command");
+    };
+    let DeleteResource::Server { yes, .. } = args.resource else {
+        panic!("expected Server resource");
+    };
+    assert!(yes);
+}
+
+#[test]
+fn parse_delete_server_no_yes_flag() {
+    let cli = Cli::try_parse_from(["kasmctl", "delete", "server", "srv-abc"]).unwrap();
+    let Command::Delete(args) = cli.command else {
+        panic!("expected Delete command");
+    };
+    let DeleteResource::Server { yes, .. } = args.resource else {
+        panic!("expected Server resource");
+    };
+    assert!(!yes);
+}
+
+// --- Get agents --name filter ---
+
+#[test]
+fn parse_get_agents_with_name_filter() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "agents", "--name", "myhost"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Agents { filters } = args.resource else {
+        panic!("expected Agents resource");
+    };
+    assert_eq!(filters.name.as_deref(), Some("myhost"));
+    assert!(!filters.is_empty());
+}
+
+#[test]
+fn parse_get_agents_no_name_filter() {
+    let cli = Cli::try_parse_from(["kasmctl", "get", "agents"]).unwrap();
+    let Command::Get(args) = cli.command else {
+        panic!("expected Get command");
+    };
+    let GetResource::Agents { filters } = args.resource else {
+        panic!("expected Agents resource");
+    };
+    assert!(filters.name.is_none());
 }

@@ -977,7 +977,7 @@ fn agent_table_headers_are_correct() {
     assert_eq!(
         Agent::table_headers(),
         vec![
-            "AGENT ID", "HOSTNAME", "STATUS", "ENABLED", "CORES", "MEMORY"
+            "AGENT ID", "HOSTNAME", "STATUS", "ENABLED", "CORES", "MEMORY", "ZONE"
         ]
     );
 }
@@ -1221,7 +1221,8 @@ fn server_table_headers_are_correct() {
             "HOSTNAME",
             "TYPE",
             "ENABLED",
-            "SESSIONS"
+            "SESSIONS",
+            "ZONE"
         ]
     );
 }

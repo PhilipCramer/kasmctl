@@ -13,15 +13,27 @@ pub enum DeleteResource {
     Session {
         /// Session ID to delete
         id: String,
+
+        /// Skip confirmation prompt
+        #[arg(long, short)]
+        yes: bool,
     },
     /// Delete an image by ID, ID prefix, or friendly name
     Image {
         /// Image to delete (exact ID, ID prefix, or case-insensitive friendly name)
         id: String,
+
+        /// Skip confirmation prompt
+        #[arg(long, short)]
+        yes: bool,
     },
-    /// Delete a server
+    /// Delete a server by ID, ID prefix, friendly name, or hostname
     Server {
-        /// Server ID to delete
+        /// Server to delete (exact ID, ID prefix, case-insensitive friendly name, or hostname)
         id: String,
+
+        /// Skip confirmation prompt
+        #[arg(long, short)]
+        yes: bool,
     },
 }

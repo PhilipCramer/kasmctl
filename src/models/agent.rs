@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::output::display::{format_bytes, short_id};
 use crate::resource::Resource;
 
-#[derive(Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Agent {
     pub agent_id: String,
     #[serde(default)]
@@ -39,7 +39,7 @@ impl Resource for Agent {
 
     fn table_headers() -> Vec<&'static str> {
         vec![
-            "AGENT ID", "HOSTNAME", "STATUS", "ENABLED", "CORES", "MEMORY",
+            "AGENT ID", "HOSTNAME", "STATUS", "ENABLED", "CORES", "MEMORY", "ZONE",
         ]
     }
 
@@ -51,6 +51,7 @@ impl Resource for Agent {
             self.enabled.map(|v| v.to_string()).unwrap_or_default(),
             self.cores.map(|v| v.to_string()).unwrap_or_default(),
             self.memory.map(format_bytes).unwrap_or_default(),
+            short_id(&self.zone_id.clone().unwrap_or_default()).to_string(),
         ]
     }
 
